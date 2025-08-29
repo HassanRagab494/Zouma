@@ -6,14 +6,16 @@ function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div>
+    <div className="layout-container">
       <Navbar toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+
+      {/* سايدبار */}
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
 
-      <div className="content" style={{ marginLeft: "0", marginTop: "70px", padding: "20px" }}>
-        {children}
-      </div>
+      {/* الكونتنت */}
+      <div className="content">{children}</div>
     </div>
   );
 }
+
 export default Layout;
