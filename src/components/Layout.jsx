@@ -3,18 +3,15 @@ import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 
 function Layout({ children }) {
-  const [open, setOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="d-flex">
-      <div className={`sidebar-container ${open ? "open" : "collapsed"}`}>
-        <Sidebar open={open} setOpen={setOpen} />
-      </div>
+    <div>
+      <Navbar toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+      <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
 
-
-      <div className="flex-grow-1">
-        <Navbar setOpen={setOpen} />
-        <main className="p-3">{children}</main>
+      <div className="content" style={{ marginLeft: "0", marginTop: "70px", padding: "20px" }}>
+        {children}
       </div>
     </div>
   );
