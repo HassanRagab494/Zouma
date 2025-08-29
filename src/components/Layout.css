@@ -1,0 +1,30 @@
+.sidebar {
+  width: 220px;
+  background-color: #f8f7e7; 
+  min-height: 100vh;
+  transition: 0.3s;
+}
+.sidebar.collapsed {
+  width: 60px;
+}
+.sidebar h3 {
+  color: #0d1b1e;
+}
+.sidebar ul li {
+  padding: 10px 0;
+}
+.sidebar ul li a {
+  text-decoration: none;
+  color: #0d1b1e;
+  display: block;
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+.sidebar ul li a:hover {
+  background-color: #0d1b1e;
+  color: #f8f7e7;
+}
+
+.custom-navbar {
+  background-color: #0d1b1e;
+}
