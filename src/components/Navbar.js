@@ -3,8 +3,9 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { Bell, Gift, CalendarCheck, Cart } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
+import { FaBars } from "react-icons/fa";
 
-function Navbar() {
+function Navbar({ toggleSidebar }) {
   const [notifications, setNotifications] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -74,19 +75,26 @@ function Navbar() {
 
   return (
     <>
-      {/* الناف بار */}
       <nav
-        className="navbar shadow-sm px-4 d-flex justify-content-between"
+        className="navbar shadow-sm px-3 d-flex justify-content-between"
         style={{
           position: "fixed",
           top: 0,
           left: 0,
           right: 0,
-          zIndex: 1020,
+          zIndex: 1030,
           background: "#f5f5dc",
           color: "#000",
         }}
       >
+        {/* زرار القائمة يظهر بس على الموبايل */}
+        <button
+          className="btn btn-light d-md-none me-2"
+          onClick={toggleSidebar}
+        >
+          <FaBars />
+        </button>
+
         {/* اللوجو */}
         <img 
           src="https://f.top4top.io/p_3528e1g670.png" 
@@ -96,8 +104,7 @@ function Navbar() {
         />
 
         {/* الأزرار */}
-        <div className="d-flex align-items-center flex-wrap gap-2">
-          {/* أيقونة الإشعارات */}
+        <div className="d-flex align-items-center gap-2">
           <div className="position-relative" style={{ cursor: "pointer" }} onClick={() => setShowModal(true)}>
             <Bell size={24} />
             {notifications.length > 0 && (
@@ -106,12 +113,7 @@ function Navbar() {
               </span>
             )}
           </div>
-
-          {/* زر تسجيل خروج */}
-          <button
-            onClick={handleLogout}
-            className="btn btn-danger btn-sm"
-          >
+          <button onClick={handleLogout} className="btn btn-danger btn-sm">
             تسجيل خروج
           </button>
         </div>
@@ -126,8 +128,6 @@ function Navbar() {
             <div className="modal-content">
               <div className="modal-header d-flex flex-column align-items-start">
                 <h5 className="modal-title mb-2">الإشعارات</h5>
-
-                {/* الفلاتر */}
                 <div className="btn-group mb-2 flex-wrap">
                   {["all", "order", "birthday", "anniversary"].map(type => (
                     <button
@@ -139,8 +139,6 @@ function Navbar() {
                     </button>
                   ))}
                 </div>
-
-                {/* البحث */}
                 <input
                   type="text"
                   className="form-control"
@@ -149,7 +147,6 @@ function Navbar() {
                   onChange={e => setSearchTerm(e.target.value)}
                 />
               </div>
-
               <div className="modal-body">
                 {filteredNotifications.length === 0 && <p className="text-muted">لا توجد إشعارات</p>}
                 <div className="d-flex flex-column gap-2 text-wrap">
@@ -163,7 +160,6 @@ function Navbar() {
                   ))}
                 </div>
               </div>
-
               <div className="modal-footer">
                 <button className="btn btn-secondary" onClick={() => setShowModal(false)}>إغلاق</button>
               </div>
