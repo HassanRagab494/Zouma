@@ -59,7 +59,7 @@ function Navbar({ toggleSidebar }) {
 
   const getIcon = (note) => {
     if (note.type === "birthday") return (
-      <a href={`https://wa.me/${note.phone}?text=كل سنة وانت طيب ${encodeURIComponent(note.text)}`} target="_blank" rel="noopener noreferrer">
+      <a href={`https://wa.me/${note.phone}?text=${encodeURIComponent(`كل سنة وانت طيب يا ${note.text.replace('اليوم عيد ميلاد ', '')}`)}`} target="_blank" rel="noopener noreferrer">
         <Gift className="text-warning me-2" />
       </a>
     );
@@ -69,14 +69,14 @@ function Navbar({ toggleSidebar }) {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("isAuthenticated"); 
-    navigate("/login"); 
+    localStorage.removeItem("isAuthenticated");
+    navigate("/login");
   };
 
   return (
     <>
       <nav
-        className="navbar shadow-sm px-3 d-flex justify-content-between"
+        className="navbar shadow-sm px-3 d-flex justify-content-between align-items-center" // أضفت align-items-center للتوسيط العمودي
         style={{
           position: "fixed",
           top: 0,
@@ -85,22 +85,25 @@ function Navbar({ toggleSidebar }) {
           zIndex: 1030,
           background: "#f5f5dc",
           color: "#000",
+          height: "57px", // **التعديل هنا: تحديد ارتفاع ثابت للـ Navbar**
         }}
       >
         {/* زرار القائمة يظهر بس على الموبايل */}
+        {/* نستخدم d-block d-md-none لإخفائه على الشاشات الكبيرة */}
         <button
-          className="btn btn-light d-md-none me-2"
+          className="btn btn-light d-block d-md-none me-2"
           onClick={toggleSidebar}
+          aria-label="فتح القائمة الجانبية"
         >
           <FaBars />
         </button>
 
         {/* اللوجو */}
-        <img 
-          src="https://f.top4top.io/p_3528e1g670.png" 
-          alt="Logo" 
+        <img
+          src="https://f.top4top.io/p_3528e1g670.png"
+          alt="Logo"
           className="img-fluid"
-          style={{ maxHeight: "40px", objectFit: "contain" }} 
+          style={{ maxHeight: "40px", objectFit: "contain" }}
         />
 
         {/* الأزرار */}
@@ -119,7 +122,8 @@ function Navbar({ toggleSidebar }) {
         </div>
       </nav>
 
-      <div style={{ paddingTop: "70px" }} />
+      {/* لم نعد بحاجة لهذا الـ div لأنه تم التعامل مع الـ padding-top في Layout.js */}
+      {/* <div style={{ paddingTop: "57px" }} /> */}
 
       {/* المودال */}
       {showModal && (
