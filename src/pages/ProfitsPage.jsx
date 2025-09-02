@@ -30,10 +30,11 @@ function ProfitsPage() {
     ? allOrders.filter(o => o.date === filterDate)
     : allOrders;
 
-  const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-  const totalCost = filteredOrders.reduce((sum, o) => sum + (o.cost || 0), 0);
-  const totalProfit = filteredOrders.reduce((sum, o) => sum + (o.profit || 0), 0);
-  const totalDiscount = filteredOrders.reduce((sum, o) => sum + (o.discount || 0), 0);
+  // اجمع القيم بعد تحويلها لأرقام
+  const totalRevenue = filteredOrders.reduce((sum, o) => sum + Number(o.total || 0), 0);
+  const totalCost = filteredOrders.reduce((sum, o) => sum + Number(o.cost || 0), 0);
+  const totalProfit = filteredOrders.reduce((sum, o) => sum + Number(o.profit || 0), 0);
+  const totalDiscount = filteredOrders.reduce((sum, o) => sum + Number(o.discount || 0), 0);
 
   if (loading) return <p className="text-center mt-20">جارٍ تحميل البيانات...</p>;
   if (error) return <p className="text-center mt-20 text-red-500">{error}</p>;
@@ -63,19 +64,19 @@ function ProfitsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-blue-500 text-white p-4 rounded shadow">
           <h5 className="font-semibold">إجمالي الإيرادات</h5>
-          <p className="text-xl">{totalRevenue.toFixed(2)} ج</p>
+          <p className="text-xl">{Number(totalRevenue).toFixed(2)} ج</p>
         </div>
         <div className="bg-green-500 text-white p-4 rounded shadow">
           <h5 className="font-semibold">إجمالي الربح</h5>
-          <p className="text-xl">{totalProfit.toFixed(2)} ج</p>
+          <p className="text-xl">{Number(totalProfit).toFixed(2)} ج</p>
         </div>
         <div className="bg-yellow-500 text-white p-4 rounded shadow">
           <h5 className="font-semibold">إجمالي التكلفة</h5>
-          <p className="text-xl">{totalCost.toFixed(2)} ج</p>
+          <p className="text-xl">{Number(totalCost).toFixed(2)} ج</p>
         </div>
         <div className="bg-red-500 text-white p-4 rounded shadow">
           <h5 className="font-semibold">إجمالي الخصومات</h5>
-          <p className="text-xl">{totalDiscount.toFixed(2)} ج</p>
+          <p className="text-xl">{Number(totalDiscount).toFixed(2)} ج</p>
         </div>
       </div>
 
@@ -101,10 +102,10 @@ function ProfitsPage() {
                   <tr key={idx} className="even:bg-gray-100">
                     <td className="border px-1 sm:px-2 py-1">{client?.name || "-"}</td>
                     <td className="border px-1 sm:px-2 py-1">{order.name}</td>
-                    <td className="border px-1 sm:px-2 py-1">{order.cost?.toFixed(2)}</td>
-                    <td className="border px-1 sm:px-2 py-1">{order.profit?.toFixed(2)}</td>
-                    <td className="border px-1 sm:px-2 py-1">{order.discount?.toFixed(2)}</td>
-                    <td className="border px-1 sm:px-2 py-1">{order.total?.toFixed(2)}</td>
+                    <td className="border px-1 sm:px-2 py-1">{Number(order.cost || 0).toFixed(2)}</td>
+                    <td className="border px-1 sm:px-2 py-1">{Number(order.profit || 0).toFixed(2)}</td>
+                    <td className="border px-1 sm:px-2 py-1">{Number(order.discount || 0).toFixed(2)}</td>
+                    <td className="border px-1 sm:px-2 py-1">{Number(order.total || 0).toFixed(2)}</td>
                     <td className="border px-1 sm:px-2 py-1">{order.date}</td>
                   </tr>
                 );
