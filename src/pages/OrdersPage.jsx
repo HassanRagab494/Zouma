@@ -11,24 +11,19 @@ import {
   orderBy,
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
+import { jsPDF } from "jspdf";
+import "jspdf-autotable";
 
-// مكون Modal بسيط لـ Tailwind CSS
 const TailwindModal = ({ show, onClose, title, children, footer }) => {
   if (!show) return null;
-
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div className="flex justify-between items-center p-4 border-b border-gray-200">
           <h2 className="text-xl font-semibold">{title}</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-2xl"
-          >
-            &times;
-          </button>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
         </div>
-        <div className="p-4">{children}</div>
+        <div className="p-4 overflow-y-auto flex-1">{children}</div>
         <div className="flex justify-end p-4 border-t border-gray-200 gap-2">
           {footer}
         </div>
@@ -42,130 +37,98 @@ function ClientsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-
   const [showClientModal, setShowClientModal] = useState(false);
   const [modalClient, setModalClient] = useState(null);
-  const [clientForm, setClientForm] = useState({
-    name: "",
-    phone: "",
-    address: "",
-    birthDate: "",
-  });
-
+  const [clientForm, setClientForm] = useState({ name: "", phone: "", address: "", birthDate: "" });
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [modalOrder, setModalOrder] = useState(null);
   const [currentClientId, setCurrentClientId] = useState(null);
+  const [successMessage, setSuccessMessage] = useState("");
+
   const [orderForm, setOrderForm] = useState({
-    name: "",
-    orderCost: 0,
-    cost: 0,
-    profit: 0,
-    quantity: 1,
-    discountPercentage: 0, // تم تغيير الاسم ليعكس أنه نسبة مئوية
+    items: [{ name: "", price: 0 }],
+    discountPercentage: 0,
     total: 0,
     date: new Date().toISOString().split("T")[0],
   });
-
-  const [successMessage, setSuccessMessage] = useState("");
 
   const fetchClients = useCallback(async () => {
     setLoading(true);
     try {
       const q = query(collection(db, "clients"), orderBy("createdAt", "desc"));
       const querySnapshot = await getDocs(q);
-      const clientsList = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const clientsList = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       setClients(clientsList);
-    } catch (err) {
-      console.error("Error fetching clients:", err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { setError(err.message); } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => {
-    fetchClients();
-  }, [fetchClients]);
+  useEffect(() => { fetchClients(); }, [fetchClients]);
 
-  // ---------- مودال العميل ----------
+  const calculateFinalTotal = (items, discount) => {
+    const subTotal = items.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+    const discountAmount = subTotal * ((parseFloat(discount) || 0) / 100);
+    return (subTotal - discountAmount).toFixed(2);
+  };
+
+  const addItemRow = () => {
+    setOrderForm(prev => ({
+      ...prev,
+      items: [...prev.items, { name: "", price: 0 }]
+    }));
+  };
+
+  const handleItemChange = (index, field, value) => {
+    const newItems = [...orderForm.items];
+    newItems[index][field] = value;
+    const newTotal = calculateFinalTotal(newItems, orderForm.discountPercentage);
+    setOrderForm({ ...orderForm, items: newItems, total: newTotal });
+  };
+
+  const removeItemRow = (index) => {
+    if (orderForm.items.length === 1) return;
+    const newItems = orderForm.items.filter((_, i) => i !== index);
+    const newTotal = calculateFinalTotal(newItems, orderForm.discountPercentage);
+    setOrderForm({ ...orderForm, items: newItems, total: newTotal });
+  };
+
   const openClientModal = (client = null) => {
     setModalClient(client);
-    if (client) {
-      setClientForm({
-        name: client.name || "",
-        phone: client.phone || "",
-        address: client.address || "",
-        birthDate: client.birthDate || "",
-      });
-    } else {
-      setClientForm({ name: "", phone: "", address: "", birthDate: "" });
-    }
+    setClientForm(client ? { ...client } : { name: "", phone: "", address: "", birthDate: "" });
     setShowClientModal(true);
   };
 
   const saveClient = async () => {
     try {
       if (modalClient) {
-        const clientRef = doc(db, "clients", modalClient.id);
-        await updateDoc(clientRef, { ...clientForm });
-        setSuccessMessage("تم تعديل العميل بنجاح!");
+        await updateDoc(doc(db, "clients", modalClient.id), { ...clientForm });
       } else {
         const code = Math.floor(1000 + Math.random() * 9000).toString();
-        await addDoc(collection(db, "clients"), {
-          ...clientForm,
-          code,
-          orders: [],
-          createdAt: new Date().toISOString(),
-          firstOrderDate: null,
-          lastOrderDate: null,
+        await addDoc(collection(db, "clients"), { 
+            ...clientForm, 
+            code, 
+            orders: [], 
+            createdAt: new Date().toISOString() 
         });
-        setSuccessMessage("تم إضافة العميل بنجاح!");
       }
-      fetchClients();
-      setShowClientModal(false);
-    } catch (err) {
-      console.error("Error saving client:", err);
-      setError(err.message);
-    }
+      fetchClients(); setShowClientModal(false);
+      setSuccessMessage("تم حفظ بيانات العميل!");
+    } catch (err) { setError(err.message); }
   };
-
-  const deleteClient = async (clientId) => {
-    if (!window.confirm("هل تريد حذف العميل؟")) return;
-    try {
-      await deleteDoc(doc(db, "clients", clientId));
-      setClients((prev) => prev.filter((c) => c.id !== clientId));
-      setSuccessMessage("تم حذف العميل بنجاح!");
-    } catch (err) {
-      console.error(err);
-      setError(err.message);
-    }
-  };
-
-  // ---------- مودال الأوردر ----------
-  // دالة لحساب الإجمالي بناءً على السعر، الكمية، ونسبة الخصم
-  const calculateTotal = useCallback((orderCost, quantity, discountPercentage) => {
-    const baseTotal = (parseFloat(orderCost) || 0) * (parseInt(quantity) || 1);
-    const discountAmount = baseTotal * ((parseFloat(discountPercentage) || 0) / 100);
-    return (baseTotal - discountAmount).toFixed(2);
-  }, []);
 
   const openOrderModal = (clientId, order = null, orderIndex = null) => {
     setCurrentClientId(clientId);
     setModalOrder(orderIndex !== null ? { ...order, index: orderIndex } : null);
-
+    
     if (order) {
-      setOrderForm({ ...order });
+      const sanitizedOrder = {
+        ...order,
+        items: order.items || [{ name: order.name || "أوردر", price: order.orderCost || order.total || 0 }]
+      };
+      setOrderForm(sanitizedOrder);
     } else {
       setOrderForm({
-        name: "",
-        orderCost: 0,
-        cost: 0,
-        profit: 0,
-        quantity: 1,
-        discountPercentage: 0, // استخدام الاسم الجديد
+        items: [{ name: "", price: 0 }],
+        discountPercentage: 0,
         total: 0,
         date: new Date().toISOString().split("T")[0],
       });
@@ -177,456 +140,202 @@ function ClientsPage() {
     try {
       const clientRef = doc(db, "clients", currentClientId);
       const client = clients.find((c) => c.id === currentClientId);
-
-      const total = calculateTotal(
-        orderForm.orderCost,
-        orderForm.quantity,
-        orderForm.discountPercentage // استخدام الاسم الجديد
-      );
-
-      // إعادة حساب التكلفة والمكسب بعد تطبيق الخصم على السعر الإجمالي
-      const basePriceAfterDiscount = parseFloat(total); // السعر بعد الخصم
-      const cost = +(basePriceAfterDiscount * 0.7).toFixed(2);
-      const profit = +(basePriceAfterDiscount * 0.3).toFixed(2);
-
+      const finalTotal = calculateFinalTotal(orderForm.items, orderForm.discountPercentage);
+      
+      const cost = +(finalTotal * 0.7).toFixed(2);
+      const profit = +(finalTotal * 0.3).toFixed(2);
+      const orderData = { ...orderForm, total: finalTotal, cost, profit };
 
       if (modalOrder) {
         const updatedOrders = [...client.orders];
-        updatedOrders[modalOrder.index] = { ...orderForm, total, cost, profit };
+        updatedOrders[modalOrder.index] = orderData;
         await updateDoc(clientRef, { orders: updatedOrders, lastOrderDate: orderForm.date });
-        setSuccessMessage("تم تعديل الأوردر بنجاح!");
       } else {
-        const orderToAdd = { ...orderForm, total, cost, profit };
-        const updateData = { orders: arrayUnion(orderToAdd), lastOrderDate: orderForm.date };
-        if (!client.firstOrderDate) updateData.firstOrderDate = orderForm.date;
-        await updateDoc(clientRef, updateData);
-        setSuccessMessage("تم إضافة الأوردر بنجاح!");
+        await updateDoc(clientRef, { orders: arrayUnion(orderData), lastOrderDate: orderForm.date });
       }
-
-      fetchClients();
-      setShowOrderModal(false);
-    } catch (err) {
-      console.error(err);
-      setError(err.message);
-    }
+      fetchClients(); setShowOrderModal(false);
+      setSuccessMessage("تم حفظ الأوردر بنجاح!");
+    } catch (err) { setError(err.message); }
   };
 
-  const deleteOrder = async (clientId, orderIndex) => {
-    if (!window.confirm("هل تريد حذف الأوردر؟")) return;
-    try {
-      const clientRef = doc(db, "clients", clientId);
-      const client = clients.find((c) => c.id === clientId);
-      const updatedOrders = client.orders.filter((_, i) => i !== orderIndex);
-      const updateData = { orders: updatedOrders };
-      if (updatedOrders.length === 0) updateData.firstOrderDate = updateData.lastOrderDate = null;
-      else updateData.lastOrderDate = updatedOrders[updatedOrders.length - 1].date; // قد تحتاج لتعديل هذا ليعكس تاريخ أحدث أوردر متبقي
-      await updateDoc(clientRef, updateData);
-      fetchClients();
-      setSuccessMessage("تم حذف الأوردر بنجاح!");
-    } catch (err) {
-      console.error(err);
-      setError(err.message);
-    }
+  const downloadInvoice = (client, order) => {
+    const doc = new jsPDF();
+    doc.text("Order Invoice", 105, 15, { align: "center" });
+    doc.text(`Customer: ${client.name}`, 20, 30);
+    doc.text(`Phone: ${client.phone || 'N/A'}`, 20, 37);
+    doc.text(`Date: ${order.date}`, 20, 44);
+
+    const itemsToPrint = order.items 
+      ? order.items.map(item => [item.name, `${item.price} EGP`]) 
+      : [[order.name || "Order", `${order.orderCost || order.total} EGP`]];
+
+    doc.autoTable({
+      startY: 50,
+      head: [['Item Name', 'Price']],
+      body: itemsToPrint,
+      foot: [['Discount', `${order.discountPercentage || 0}%`], ['Total Amount', `${order.total} EGP`]]
+    });
+
+    doc.save(`Invoice_${client.name}_${order.date}.pdf`);
   };
 
-  const filteredClients = clients.filter(
-    (c) =>
-      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.phone.includes(searchTerm) ||
-      (c.code && c.code.includes(searchTerm))
+  const filteredClients = clients.filter(c => 
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) || (c.phone && c.phone.includes(searchTerm))
   );
 
-  const getTotalOrdersAmount = (orders) =>
-    (orders || []).reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
-
-  if (loading) return <p className="text-center mt-5 text-gray-700">جارٍ تحميل البيانات...</p>;
-  if (error) return <p className="text-red-500 text-center mt-5">{error}</p>;
-
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="mb-6 text-3xl font-bold text-center text-gray-800">
-        نظام إدارة العملاء
-      </h1>
+    <div className="container mx-auto px-4 py-8" dir="rtl">
+      <h1 className="mb-6 text-3xl font-bold text-center text-gray-800">إدارة مبيعات الويب سايت</h1>
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-3">
-        <p className="text-lg text-gray-700">
-          إجمالي العملاء: <strong className="font-bold">{clients.length}</strong>
-        </p>
-        <button
-          className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-200"
-          onClick={() => openClientModal()}
-        >
-          إضافة عميل جديد
-        </button>
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-3">
+        <input
+          type="text"
+          className="w-full md:w-1/2 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 shadow-sm"
+          placeholder="ابحث باسم العميل أو رقم الهاتف..."
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <button onClick={() => openClientModal()} className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md font-bold transition">إضافة عميل جديد</button>
       </div>
 
-      {successMessage && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
-          {successMessage}
-        </div>
-      )}
+      {successMessage && <div className="bg-green-100 border-r-4 border-green-500 text-green-700 p-3 rounded mb-4 shadow-sm">{successMessage}</div>}
 
-      <input
-        type="text"
-        className="form-input w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 mb-6"
-        placeholder="ابحث باسم العميل أو رقم الهاتف أو الكود..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-      />
-
-      {filteredClients.length === 0 && (
-        <p className="text-center text-gray-500">لا يوجد عملاء لعرضهم.</p>
-      )}
-
-      {filteredClients.map((client) => {
-        const totalOrders = getTotalOrdersAmount(client.orders);
-        return (
-          <div key={client.id} className="bg-white rounded-lg shadow-md mb-4 overflow-hidden">
-            <div className="bg-gray-100 p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 border-b border-gray-200">
-              <span className="font-semibold text-xl text-gray-800">
-                {client.name} ({client.phone || "غير محدد"}) [{client.code}]
-              </span>
-              <div className="flex flex-wrap gap-2 mt-2 md:mt-0">
-                <button
-                  className="bg-blue-500 hover:bg-blue-600 text-white text-sm py-1 px-3 rounded transition duration-200"
-                  onClick={() => openClientModal(client)}
-                >
-                  تعديل
-                </button>
-                <button
-                  className="bg-purple-500 hover:bg-purple-600 text-white text-sm py-1 px-3 rounded transition duration-200"
-                  onClick={() => openOrderModal(client.id)}
-                >
-                  إضافة أوردر
-                </button>
-                <button
-                  className="bg-red-500 hover:bg-red-600 text-white text-sm py-1 px-3 rounded transition duration-200"
-                  onClick={() => deleteClient(client.id)}
-                >
-                  حذف
-                </button>
+      <div className="space-y-6">
+        {filteredClients.map((client) => (
+          <div key={client.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+            <div className="bg-gray-50 p-4 flex flex-wrap justify-between items-center border-b gap-2">
+              <div>
+                <h3 className="text-xl font-bold text-gray-800">{client.name} - <span className="text-blue-600">{client.phone}</span></h3>
+                <p className="text-sm text-gray-500">{client.address}</p>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => openOrderModal(client.id)} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1 rounded text-sm transition">إضافة أوردر</button>
+                <button onClick={() => openClientModal(client)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded text-sm transition">تعديل</button>
               </div>
             </div>
+
             <div className="p-4">
-              <p className="text-gray-700 mb-1">
-                <strong className="font-medium">العنوان:</strong>{" "}
-                {client.address || "غير محدد"}
-              </p>
-              <p className="text-gray-700 mb-3">
-                <strong className="font-medium">إجمالي مبلغ الأوردرات:</strong>{" "}
-                {totalOrders.toFixed(2)} ج
-              </p>
-
-              {client.orders && client.orders.length > 0 && (
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
-  <table className="min-w-full border-collapse">
-    <thead className="bg-gray-50">
-      <tr>
-        {["اسم الأوردر", "السعر", "الكمية", "الخصم (%)", "الإجمالي", "التاريخ", "إجراءات"].map(
-          (title, i) => (
-            <th
-              key={i}
-              className="py-2 px-4 border-b text-center text-sm font-semibold text-gray-600 whitespace-nowrap"
-            >
-              {title}
-            </th>
-          )
-        )}
-      </tr>
-    </thead>
-    <tbody>
-      {client.orders.map((o, idx) => (
-        <tr key={idx} className="hover:bg-gray-50">
-          <td className="py-2 px-4 border-b text-center text-sm text-gray-800 whitespace-nowrap">
-            {o.name}
-          </td>
-          <td className="py-2 px-4 border-b text-center text-sm text-gray-800 whitespace-nowrap">
-            {o.orderCost}
-          </td>
-          <td className="py-2 px-4 border-b text-center text-sm text-gray-800 whitespace-nowrap">
-            {o.quantity}
-          </td>
-          <td className="py-2 px-4 border-b text-center text-sm text-gray-800 whitespace-nowrap">
-            {o.discountPercentage || 0}%
-          </td>
-          <td className="py-2 px-4 border-b text-center text-sm text-gray-800 whitespace-nowrap">
-            {o.total}
-          </td>
-          <td className="py-2 px-4 border-b text-center text-sm text-gray-800 whitespace-nowrap">
-            {o.date}
-          </td>
-          <td className="py-2 px-4 border-b text-center text-sm text-gray-800 whitespace-nowrap">
-            <button
-              className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs py-1 px-2 rounded mr-1"
-              onClick={() => openOrderModal(client.id, o, idx)}
-            >
-              تعديل
-            </button>
-            <button
-              className="bg-red-500 hover:bg-red-600 text-white text-xs py-1 px-2 rounded"
-              onClick={() => deleteOrder(client.id, idx)}
-            >
-              حذف
-            </button>
-          </td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-</div>
-
-              )}
+              <table className="w-full text-center border-collapse">
+                <thead className="bg-gray-100 text-gray-700">
+                  <tr>
+                    <th className="p-2 border">الأصناف</th>
+                    <th className="p-2 border">الإجمالي</th>
+                    <th className="p-2 border">التاريخ</th>
+                    <th className="p-2 border">الإجراء</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {client.orders?.map((o, idx) => (
+                    <tr key={idx} className="border-b hover:bg-gray-50 transition">
+                      <td className="p-2 border text-sm text-right">
+                        {o.items ? (
+                          o.items.map((item, i) => <div key={i} className="border-b last:border-0 py-1">• {item.name} ({item.price}ج)</div>)
+                        ) : (
+                          <div className="text-gray-400">{o.name} (بيانات قديمة)</div>
+                        )}
+                      </td>
+                      <td className="p-2 border font-bold text-green-700">{o.total} ج</td>
+                      <td className="p-2 border text-sm">{o.date}</td>
+                      <td className="p-2 border">
+                        <div className="flex flex-col gap-1">
+                          <button onClick={() => downloadInvoice(client, o)} className="bg-gray-800 hover:bg-black text-white px-2 py-1 rounded text-xs transition">تحميل فاتورة</button>
+                          <button onClick={() => openOrderModal(client.id, o, idx)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs transition">تعديل</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-        );
-      })}
+        ))}
+      </div>
 
-      {/* مودال العميل (TailwindModal) */}
-      <TailwindModal
-        show={showClientModal}
-        onClose={() => setShowClientModal(false)}
-        title={modalClient ? "تعديل العميل" : "إضافة عميل جديد"}
-        footer={
-          <>
-            <button
-              className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition duration-200"
-              onClick={() => setShowClientModal(false)}
-            >
-              إلغاء
-            </button>
-            <button
-              className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-200"
-              onClick={saveClient}
-            >
-              حفظ
-            </button>
-          </>
-        }
-      >
-        <form>
+      <TailwindModal show={showClientModal} onClose={() => setShowClientModal(false)} title="بيانات العميل">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                الاسم
-              </label>
-              <input
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                value={clientForm.name}
-                onChange={(e) =>
-                  setClientForm({ ...clientForm, name: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                الهاتف
-              </label>
-              <input
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                value={clientForm.phone}
-                onChange={(e) =>
-                  setClientForm({ ...clientForm, phone: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                العنوان
-              </label>
-              <input
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                value={clientForm.address}
-                onChange={(e) =>
-                  setClientForm({ ...clientForm, address: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                تاريخ الميلاد
-              </label>
-              <input
-                type="date"
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                value={clientForm.birthDate}
-                onChange={(e) =>
-                  setClientForm({ ...clientForm, birthDate: e.target.value })
-                }
-              />
-            </div>
+             <div>
+                <label className="block text-sm font-bold mb-1">اسم العميل</label>
+                <input className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-400" value={clientForm.name} onChange={(e)=>setClientForm({...clientForm, name: e.target.value})} />
+             </div>
+             <div>
+                <label className="block text-sm font-bold mb-1">رقم الهاتف</label>
+                <input className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-400" value={clientForm.phone} onChange={(e)=>setClientForm({...clientForm, phone: e.target.value})} />
+             </div>
+             <div className="md:col-span-2">
+                <label className="block text-sm font-bold mb-1">العنوان</label>
+                <input className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-400" value={clientForm.address} onChange={(e)=>setClientForm({...clientForm, address: e.target.value})} />
+             </div>
           </div>
-        </form>
+          <button onClick={saveClient} className="w-full bg-blue-600 hover:bg-blue-700 text-white mt-6 py-2 rounded-lg font-bold transition">حفظ بيانات العميل</button>
       </TailwindModal>
 
-      {/* مودال الأوردر (TailwindModal) */}
       <TailwindModal
         show={showOrderModal}
         onClose={() => setShowOrderModal(false)}
-        title={modalOrder ? "تعديل الأوردر" : "إضافة أوردر جديد"}
-        footer={
-          <>
-            <button
-              className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition duration-200"
-              onClick={() => setShowOrderModal(false)}
-            >
-              إلغاء
-            </button>
-            <button
-              className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-200"
-              onClick={saveOrder}
-            >
-              حفظ
-            </button>
-          </>
-        }
+        title="إنشاء فاتورة أوردر"
+        footer={<button onClick={saveOrder} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg font-bold transition">حفظ الأوردر</button>}
       >
-        <form>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                اسم الأوردر
-              </label>
-              <input
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                value={orderForm.name}
-                onChange={(e) =>
-                  setOrderForm({ ...orderForm, name: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                سعر الأوردر
-              </label>
-              <input
-                type="number"
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                value={orderForm.orderCost}
-                onChange={(e) => {
-                  const orderCost = parseFloat(e.target.value) || 0;
-                  setOrderForm((prev) => {
-                    const quantity = prev.quantity || 1;
-                    const discountPercentage = prev.discountPercentage || 0;
-                    const total = calculateTotal(orderCost, quantity, discountPercentage);
-                    const basePriceAfterDiscount = parseFloat(total);
-                    const cost = +(basePriceAfterDiscount * 0.7).toFixed(2);
-                    const profit = +(basePriceAfterDiscount * 0.3).toFixed(2);
+        <div className="space-y-4">
+          <div className="flex justify-between items-center border-b pb-2">
+            <h3 className="font-bold text-gray-700">الأصناف المطلوبة:</h3>
+            <button onClick={addItemRow} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md text-sm transition font-bold">+ إضافة صنف جديد</button>
+          </div>
+          
+          <div className="max-h-60 overflow-y-auto space-y-2 p-1">
+            {orderForm.items?.map((item, index) => (
+              <div key={index} className="flex gap-2 items-center bg-gray-50 p-2 rounded-lg border border-gray-200">
+                <input
+                  placeholder="اسم المنتج (مثلاً: مج)"
+                  className="flex-1 border p-2 rounded-md text-right focus:ring-1 focus:ring-green-400"
+                  value={item.name}
+                  onChange={(e) => handleItemChange(index, "name", e.target.value)}
+                />
+                <input
+                  type="number"
+                  placeholder="السعر"
+                  className="w-24 border p-2 rounded-md text-center focus:ring-1 focus:ring-green-400"
+                  value={item.price}
+                  onChange={(e) => handleItemChange(index, "price", e.target.value)}
+                />
+                <button 
+                  onClick={() => removeItemRow(index)} 
+                  className="text-white bg-red-400 hover:bg-red-600 w-8 h-8 rounded-full flex items-center justify-center transition"
+                  title="حذف الصنف"
+                >
+                  &times;
+                </button>
+              </div>
+            ))}
+          </div>
 
-                    return {
-                      ...prev,
-                      orderCost,
-                      cost,
-                      profit,
-                      total,
-                    };
-                  });
-                }}
-              />
-            </div>
+          <div className="grid grid-cols-2 gap-4 border-t pt-4">
             <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                التكلفة
-              </label>
+              <label className="block text-sm font-bold mb-1">نسبة الخصم (%)</label>
               <input
                 type="number"
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-gray-100 leading-tight focus:outline-none focus:shadow-outline"
-                value={orderForm.cost}
-                readOnly
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                المكسب
-              </label>
-              <input
-                type="number"
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-gray-100 leading-tight focus:outline-none focus:shadow-outline"
-                value={orderForm.profit}
-                readOnly
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                الكمية
-              </label>
-              <input
-                type="number"
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                value={orderForm.quantity}
-                onChange={(e) => {
-                  const quantity = parseInt(e.target.value) || 1;
-                  setOrderForm((prev) => {
-                    const orderCost = prev.orderCost || 0;
-                    const discountPercentage = prev.discountPercentage || 0;
-                    const total = calculateTotal(orderCost, quantity, discountPercentage);
-                    const basePriceAfterDiscount = parseFloat(total);
-                    const cost = +(basePriceAfterDiscount * 0.7).toFixed(2);
-                    const profit = +(basePriceAfterDiscount * 0.3).toFixed(2);
-                    return {
-                      ...prev,
-                      quantity,
-                      cost,
-                      profit,
-                      total,
-                    };
-                  });
-                }}
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                الخصم (نسبة مئوية %)
-              </label>
-              <input
-                type="number"
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                className="w-full border p-2 rounded-md focus:ring-2 focus:ring-blue-400"
                 value={orderForm.discountPercentage}
                 onChange={(e) => {
-                  const discountPercentage = parseFloat(e.target.value) || 0;
-                  setOrderForm((prev) => {
-                    const orderCost = prev.orderCost || 0;
-                    const quantity = prev.quantity || 1;
-                    const total = calculateTotal(orderCost, quantity, discountPercentage);
-                    const basePriceAfterDiscount = parseFloat(total);
-                    const cost = +(basePriceAfterDiscount * 0.7).toFixed(2);
-                    const profit = +(basePriceAfterDiscount * 0.3).toFixed(2);
-                    return {
-                      ...prev,
-                      discountPercentage,
-                      cost,
-                      profit,
-                      total,
-                    };
-                  });
+                  const disc = e.target.value;
+                  setOrderForm(prev => ({ ...prev, discountPercentage: disc, total: calculateFinalTotal(prev.items, disc) }));
                 }}
               />
             </div>
             <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                الإجمالي
-              </label>
-              <input
-                type="number"
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-gray-100 leading-tight focus:outline-none focus:shadow-outline"
-                value={orderForm.total}
-                readOnly
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                التاريخ
-              </label>
+              <label className="block text-sm font-bold mb-1">تاريخ الأوردر</label>
               <input
                 type="date"
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                className="w-full border p-2 rounded-md focus:ring-2 focus:ring-blue-400"
                 value={orderForm.date}
-                onChange={(e) =>
-                  setOrderForm((prev) => ({ ...prev, date: e.target.value }))
-                }
+                onChange={(e) => setOrderForm({ ...orderForm, date: e.target.value })}
               />
             </div>
           </div>
-        </form>
+
+          <div className="bg-blue-600 p-4 rounded-lg flex justify-between items-center text-white shadow-lg">
+            <span className="text-lg font-bold">الإجمالي النهائي:</span>
+            <span className="text-3xl font-black">{orderForm.total} ج.م</span>
+          </div>
+        </div>
       </TailwindModal>
     </div>
   );
