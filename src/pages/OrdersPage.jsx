@@ -57,7 +57,15 @@ function ClientsPage() {
     try {
       const q = query(collection(db, "clients"), orderBy("createdAt", "desc"));
       const querySnapshot = await getDocs(q);
-      const clientsList = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      let clientsList = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+      // --- التعديل الجديد: ترتيب العملاء حسب إجمالي المبيعات ---
+      clientsList.sort((a, b) => {
+        const totalA = a.orders?.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0) || 0;
+        const totalB = b.orders?.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0) || 0;
+        return totalB - totalA; // ترتيب تنازلي (الكبير فوق)
+      });
+
       setClients(clientsList);
     } catch (err) { setError(err.message); } finally { setLoading(false); }
   }, []);
@@ -188,52 +196,61 @@ function ClientsPage() {
       )}
 
       <div className="grid gap-6">
-        {clients.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.phone.includes(searchTerm)).map((client) => (
-          <div key={client.id} className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
-            <div className="bg-gray-50 p-4 flex flex-wrap justify-between items-center border-b gap-3">
-              <h2 className="text-xl font-bold text-gray-800">{client.name} - <span className="text-blue-600 font-medium">{client.phone}</span></h2>
-              <div className="flex gap-2">
-                <button onClick={() => openOrderModal(client.id)} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1 rounded-md text-sm font-bold shadow transition">أوردر جديد</button>
-                <button onClick={() => openClientModal(client)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded-md text-sm transition">تعديل</button>
+        {clients
+          .filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.phone.includes(searchTerm))
+          .map((client) => {
+            const clientTotalSpending = client.orders?.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0) || 0;
+            return (
+              <div key={client.id} className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+                <div className="bg-gray-50 p-4 flex flex-wrap justify-between items-center border-b gap-3">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-800">{client.name} - <span className="text-blue-600 font-medium">{client.phone}</span></h2>
+                    <p className="text-xs text-green-600 font-bold mt-1">إجمالي تعاملات العميل: {clientTotalSpending.toFixed(2)} ج</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => openOrderModal(client.id)} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1 rounded-md text-sm font-bold shadow transition">أوردر جديد</button>
+                    <button onClick={() => openClientModal(client)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded-md text-sm transition font-bold">تعديل</button>
+                  </div>
+                </div>
+                
+                <div className="p-4 overflow-x-auto">
+                  <table className="w-full text-center border-collapse">
+                    <thead className="bg-gray-100 text-gray-600 uppercase text-xs font-bold">
+                      <tr>
+                        <th className="p-3 border">الأصناف المطلوبة</th>
+                        <th className="p-3 border">الإجمالي</th>
+                        <th className="p-3 border">التاريخ</th>
+                        <th className="p-3 border">إجراءات</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-gray-700">
+                      {client.orders?.map((o, idx) => (
+                        <tr key={idx} className="hover:bg-blue-50 transition border-b">
+                          <td className="p-3 border text-sm text-right">
+                            {o.items && o.items.length > 0 ? (
+                              o.items.map((item, i) => (
+                                <div key={i} className="py-1">• {item.name || "بدون اسم"} ({item.price || 0} ج)</div>
+                              ))
+                            ) : (
+                              <div className="font-bold text-gray-500 italic">{o.name || "أوردر قديم"}</div>
+                            )}
+                          </td>
+                          <td className="p-3 border font-black text-green-700">{o.total} ج</td>
+                          <td className="p-3 border text-xs">{o.date}</td>
+                          <td className="p-3 border">
+                            <button onClick={() => openOrderModal(client.id, o, idx)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs font-bold shadow-sm transition">الفاتورة</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-            
-            <div className="p-4 overflow-x-auto">
-              <table className="w-full text-center border-collapse">
-                <thead className="bg-gray-100 text-gray-600 uppercase text-xs font-bold">
-                  <tr>
-                    <th className="p-3 border">الأصناف المطلوبة</th>
-                    <th className="p-3 border">الإجمالي</th>
-                    <th className="p-3 border">التاريخ</th>
-                    <th className="p-3 border">إجراءات</th>
-                  </tr>
-                </thead>
-                <tbody className="text-gray-700">
-                  {client.orders?.map((o, idx) => (
-                    <tr key={idx} className="hover:bg-blue-50 transition border-b">
-                      <td className="p-3 border text-sm text-right">
-                        {o.items && o.items.length > 0 ? (
-                          o.items.map((item, i) => (
-                            <div key={i} className="py-1">• {item.name || "بدون اسم"} ({item.price || 0} ج)</div>
-                          ))
-                        ) : (
-                          <div className="font-bold text-gray-500 italic">{o.name || "أوردر قديم"}</div>
-                        )}
-                      </td>
-                      <td className="p-3 border font-black text-green-700">{o.total} ج</td>
-                      <td className="p-3 border text-xs">{o.date}</td>
-                      <td className="p-3 border">
-                        <button onClick={() => openOrderModal(client.id, o, idx)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs font-bold shadow-sm transition">الفاتورة</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ))}
+            );
+          })}
       </div>
 
+      {/* مودال العميل ومودال الأوردر (نفس الكود السابق بدون تغيير) */}
       <TailwindModal show={showClientModal} onClose={() => setShowClientModal(false)} title="بيانات العميل">
         <div className="space-y-4 p-2">
           <input className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition" placeholder="اسم العميل" value={clientForm.name} onChange={(e)=>setClientForm({...clientForm, name: e.target.value})} />
@@ -249,8 +266,8 @@ function ClientsPage() {
         title="إنشاء / تعديل أوردر"
         footer={
           <div className="flex gap-2 w-full justify-between">
-            <button onClick={handleDownloadImage} className="bg-gray-800 hover:bg-black text-white px-4 py-2 rounded-lg font-bold shadow flex-1 transition">تحميل السكرين شوت 📸</button>
-            <button onClick={saveOrder} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold shadow flex-1 transition">حفظ الأوردر ✅</button>
+            <button onClick={handleDownloadImage} className="bg-gray-800 hover:bg-black text-white px-4 py-2 rounded-lg font-bold shadow flex-1 transition font-bold">تحميل السكرين شوت 📸</button>
+            <button onClick={saveOrder} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold shadow flex-1 transition font-bold">حفظ الأوردر ✅</button>
           </div>
         }
       >
@@ -261,12 +278,12 @@ function ClientsPage() {
               <button onClick={addItemRow} className="bg-cyan-500 hover:bg-cyan-600 text-white w-10 h-10 rounded-full font-black text-xl shadow-md transition transform hover:scale-110 flex items-center justify-center">+</button>
             </div>
             
-            <div className="space-y-3 max-h-48 overflow-y-auto p-1">
+            <div className="space-y-3 max-h-48 overflow-y-auto p-1 text-right">
                 {orderForm.items.map((item, index) => (
                 <div key={index} className="flex gap-2 items-center animate-fadeIn">
-                    <input className="flex-1 border p-2 rounded-md shadow-sm outline-none focus:border-cyan-500" placeholder="اسم الصنف" value={item.name} onChange={(e)=>handleItemChange(index, "name", e.target.value)} />
+                    <input className="flex-1 border p-2 rounded-md shadow-sm outline-none focus:border-cyan-500 text-right" placeholder="اسم الصنف" value={item.name} onChange={(e)=>handleItemChange(index, "name", e.target.value)} />
                     <input type="number" className="w-24 border p-2 rounded-md shadow-sm outline-none text-center" placeholder="السعر" value={item.price} onChange={(e)=>handleItemChange(index, "price", e.target.value)} />
-                    {orderForm.items.length > 1 && <button onClick={()=>removeItemRow(index)} className="text-red-500 hover:bg-red-100 p-2 rounded-full transition">✕</button>}
+                    {orderForm.items.length > 1 && <button onClick={()=>removeItemRow(index)} className="text-red-500 hover:bg-red-100 p-2 rounded-full transition font-bold">✕</button>}
                 </div>
                 ))}
             </div>
@@ -274,29 +291,28 @@ function ClientsPage() {
             <div className="grid grid-cols-2 gap-4 mt-6">
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">الخصم (%)</label>
-                <input type="number" className="w-full border p-2 rounded-md outline-none" value={orderForm.discountPercentage} onChange={(e)=>setOrderForm({...orderForm, discountPercentage: e.target.value, total: calculateFinalTotal(orderForm.items, e.target.value)})} />
+                <input type="number" className="w-full border p-2 rounded-md outline-none text-center" value={orderForm.discountPercentage} onChange={(e)=>setOrderForm({...orderForm, discountPercentage: e.target.value, total: calculateFinalTotal(orderForm.items, e.target.value)})} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">التاريخ</label>
-                <input type="date" className="w-full border p-2 rounded-md outline-none" value={orderForm.date} onChange={(e)=>setOrderForm({...orderForm, date: e.target.value})} />
+                <input type="date" className="w-full border p-2 rounded-md outline-none text-center" value={orderForm.date} onChange={(e)=>setOrderForm({...orderForm, date: e.target.value})} />
               </div>
             </div>
           </div>
 
           <div className="border-t pt-4">
-             <h4 className="text-center text-xs font-bold text-gray-400 mb-4 uppercase tracking-widest">--- معاينة الصورة النهائية ---</h4>
              <div ref={invoiceRef} className="bg-white p-8 border shadow-2xl rounded-lg text-black mx-auto" style={{ width: '400px', fontFamily: 'Arial, sans-serif' }}>
                 <div className="text-center border-b-2 border-gray-100 pb-4 mb-6">
-                  <h2 className="text-3xl font-black text-gray-800 mb-1">Z O U M A</h2>
-                  <p className="text-xs text-gray-400 tracking-tighter">PREMIUM STORE • {orderForm.date}</p>
+                  <h2 className="text-3xl font-black text-gray-800 mb-1 tracking-tighter">Z O U M A</h2>
+                  <p className="text-xs text-gray-400 tracking-widest uppercase">Premium Store • {orderForm.date}</p>
                 </div>
                 
-                <div className="mb-6 space-y-1">
+                <div className="mb-6 space-y-1 text-right">
                   <p className="text-sm"><strong>العميل:</strong> {clients.find(c=>c.id === currentClientId)?.name}</p>
                   <p className="text-sm"><strong>الهاتف:</strong> {clients.find(c=>c.id === currentClientId)?.phone}</p>
                 </div>
 
-                <table className="w-full text-sm mb-6">
+                <table className="w-full text-sm mb-6 border-collapse">
                   <thead>
                     <tr className="border-b-2 border-black">
                       <th className="text-right py-2">الصنف</th>
@@ -306,25 +322,25 @@ function ClientsPage() {
                   <tbody>
                     {orderForm.items.map((item, idx) => (
                       <tr key={idx} className="border-b border-gray-50">
-                        <td className="py-3">{item.name || "صنف غير مسمى"}</td>
-                        <td className="py-3 font-medium">{item.price || 0} ج</td>
+                        <td className="py-3 text-right">{item.name || "صنف غير مسمى"}</td>
+                        <td className="py-3 font-medium text-left">{item.price || 0} ج</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
 
-                <div className="space-y-2 border-t-2 border-gray-100 pt-4">
+                <div className="space-y-2 border-t-2 border-gray-100 pt-4 text-right">
                   <div className="flex justify-between text-xs text-gray-500">
+                    <span className="font-bold">{orderForm.items.reduce((s,i)=> s + (parseFloat(i.price)||0), 0)} ج</span>
                     <span>المجموع الفرعي:</span>
-                    <span>{orderForm.items.reduce((s,i)=> s + (parseFloat(i.price)||0), 0)} ج</span>
                   </div>
                   <div className="flex justify-between text-xs text-red-500">
-                    <span>الخصم الممنوح:</span>
-                    <span>{orderForm.discountPercentage}%</span>
+                    <span className="font-bold">{orderForm.discountPercentage}%</span>
+                    <span>الخصم:</span>
                   </div>
                   <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg mt-4 border border-gray-100">
-                    <span className="font-bold text-lg">الإجمالي:</span>
                     <span className="font-black text-2xl text-blue-700">{orderForm.total} ج.م</span>
+                    <span className="font-bold text-lg">الإجمالي:</span>
                   </div>
                 </div>
 
