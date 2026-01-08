@@ -8,6 +8,7 @@ import {
   arrayUnion,
   query,
   orderBy,
+  deleteDoc,
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import html2canvas from "html2canvas";
@@ -59,11 +60,11 @@ function ClientsPage() {
       const querySnapshot = await getDocs(q);
       let clientsList = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
-      // --- التعديل الجديد: ترتيب العملاء حسب إجمالي المبيعات ---
+      // ترتيب العملاء حسب إجمالي المبيعات
       clientsList.sort((a, b) => {
         const totalA = a.orders?.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0) || 0;
         const totalB = b.orders?.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0) || 0;
-        return totalB - totalA; // ترتيب تنازلي (الكبير فوق)
+        return totalB - totalA;
       });
 
       setClients(clientsList);
@@ -71,6 +72,24 @@ function ClientsPage() {
   }, []);
 
   useEffect(() => { fetchClients(); }, [fetchClients]);
+
+  // دالة حذف الفاتورة (الأوردر)
+  const deleteOrder = async (clientId, orderIndex) => {
+    if (!window.confirm("هل أنت متأكد من حذف هذه الفاتورة نهائياً؟")) return;
+    try {
+      const clientRef = doc(db, "clients", clientId);
+      const client = clients.find((c) => c.id === clientId);
+      const updatedOrders = client.orders.filter((_, i) => i !== orderIndex);
+      
+      await updateDoc(clientRef, { orders: updatedOrders });
+      fetchClients(); // تحديث القائمة
+      setSuccessMessage("تم حذف الفاتورة بنجاح!");
+      setTimeout(() => setSuccessMessage(""), 3000);
+    } catch (err) {
+      console.error(err);
+      setError("حدث خطأ أثناء الحذف");
+    }
+  };
 
   const calculateFinalTotal = (items, discount) => {
     const subTotal = items.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
@@ -190,7 +209,7 @@ function ClientsPage() {
       </div>
 
       {successMessage && (
-        <div className="bg-green-100 border-r-4 border-green-500 text-green-700 p-3 rounded mb-4 animate-bounce">
+        <div className="bg-green-100 border-r-4 border-green-500 text-green-700 p-3 rounded mb-4">
           {successMessage}
         </div>
       )}
@@ -209,7 +228,7 @@ function ClientsPage() {
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => openOrderModal(client.id)} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1 rounded-md text-sm font-bold shadow transition">أوردر جديد</button>
-                    <button onClick={() => openClientModal(client)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded-md text-sm transition font-bold">تعديل</button>
+                    <button onClick={() => openClientModal(client)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded-md text-sm transition font-bold">تعديل العميل</button>
                   </div>
                 </div>
                 
@@ -238,7 +257,10 @@ function ClientsPage() {
                           <td className="p-3 border font-black text-green-700">{o.total} ج</td>
                           <td className="p-3 border text-xs">{o.date}</td>
                           <td className="p-3 border">
-                            <button onClick={() => openOrderModal(client.id, o, idx)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs font-bold shadow-sm transition">الفاتورة</button>
+                            <div className="flex justify-center gap-2">
+                                <button onClick={() => openOrderModal(client.id, o, idx)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs font-bold shadow-sm">الفاتورة</button>
+                                <button onClick={() => deleteOrder(client.id, idx)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs font-bold shadow-sm" title="حذف الفاتورة">حذف</button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -250,13 +272,13 @@ function ClientsPage() {
           })}
       </div>
 
-      {/* مودال العميل ومودال الأوردر (نفس الكود السابق بدون تغيير) */}
+      {/* موديالات العميل والأوردر (نفس التصميم الاحترافي) */}
       <TailwindModal show={showClientModal} onClose={() => setShowClientModal(false)} title="بيانات العميل">
         <div className="space-y-4 p-2">
-          <input className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition" placeholder="اسم العميل" value={clientForm.name} onChange={(e)=>setClientForm({...clientForm, name: e.target.value})} />
-          <input className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition" placeholder="رقم الهاتف" value={clientForm.phone} onChange={(e)=>setClientForm({...clientForm, phone: e.target.value})} />
-          <input className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition" placeholder="العنوان" value={clientForm.address} onChange={(e)=>setClientForm({...clientForm, address: e.target.value})} />
-          <button onClick={saveClient} className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold shadow-lg transition">حفظ بيانات العميل</button>
+          <input className="w-full border p-3 rounded-lg outline-none" placeholder="اسم العميل" value={clientForm.name} onChange={(e)=>setClientForm({...clientForm, name: e.target.value})} />
+          <input className="w-full border p-3 rounded-lg outline-none" placeholder="رقم الهاتف" value={clientForm.phone} onChange={(e)=>setClientForm({...clientForm, phone: e.target.value})} />
+          <input className="w-full border p-3 rounded-lg outline-none" placeholder="العنوان" value={clientForm.address} onChange={(e)=>setClientForm({...clientForm, address: e.target.value})} />
+          <button onClick={saveClient} className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold transition shadow-md">حفظ بيانات العميل</button>
         </div>
       </TailwindModal>
 
@@ -266,8 +288,8 @@ function ClientsPage() {
         title="إنشاء / تعديل أوردر"
         footer={
           <div className="flex gap-2 w-full justify-between">
-            <button onClick={handleDownloadImage} className="bg-gray-800 hover:bg-black text-white px-4 py-2 rounded-lg font-bold shadow flex-1 transition font-bold">تحميل السكرين شوت 📸</button>
-            <button onClick={saveOrder} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold shadow flex-1 transition font-bold">حفظ الأوردر ✅</button>
+            <button onClick={handleDownloadImage} className="bg-gray-800 hover:bg-black text-white px-4 py-2 rounded-lg font-bold shadow flex-1 transition">تحميل السكرين شوت 📸</button>
+            <button onClick={saveOrder} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold shadow flex-1 transition">حفظ الأوردر ✅</button>
           </div>
         }
       >
@@ -303,7 +325,7 @@ function ClientsPage() {
           <div className="border-t pt-4">
              <div ref={invoiceRef} className="bg-white p-8 border shadow-2xl rounded-lg text-black mx-auto" style={{ width: '400px', fontFamily: 'Arial, sans-serif' }}>
                 <div className="text-center border-b-2 border-gray-100 pb-4 mb-6">
-                  <h2 className="text-3xl font-black text-gray-800 mb-1 tracking-tighter">Z O U M A</h2>
+                  <h2 className="text-3xl font-black text-gray-800 mb-1 tracking-tighter uppercase">Z O U M A</h2>
                   <p className="text-xs text-gray-400 tracking-widest uppercase">Premium Store • {orderForm.date}</p>
                 </div>
                 
@@ -330,22 +352,22 @@ function ClientsPage() {
                 </table>
 
                 <div className="space-y-2 border-t-2 border-gray-100 pt-4 text-right">
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span className="font-bold">{orderForm.items.reduce((s,i)=> s + (parseFloat(i.price)||0), 0)} ج</span>
+                  <div className="flex justify-between text-xs text-gray-500 font-bold">
+                    <span>{orderForm.items.reduce((s,i)=> s + (parseFloat(i.price)||0), 0)} ج</span>
                     <span>المجموع الفرعي:</span>
                   </div>
-                  <div className="flex justify-between text-xs text-red-500">
-                    <span className="font-bold">{orderForm.discountPercentage}%</span>
+                  <div className="flex justify-between text-xs text-red-500 font-bold">
+                    <span>{orderForm.discountPercentage}%</span>
                     <span>الخصم:</span>
                   </div>
                   <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg mt-4 border border-gray-100">
                     <span className="font-black text-2xl text-blue-700">{orderForm.total} ج.م</span>
-                    <span className="font-bold text-lg">الإجمالي:</span>
+                    <span className="font-bold text-lg text-gray-800">الإجمالي:</span>
                   </div>
                 </div>
 
                 <div className="mt-8 text-center">
-                   <p className="text-[10px] text-gray-400">شكراً لثقتكم في متجرنا • يسعدنا التعامل معكم دائماً</p>
+                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">شكراً لثقتكم في متجرنا • يسعدنا التعامل معكم دائماً</p>
                 </div>
              </div>
           </div>
