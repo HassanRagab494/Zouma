@@ -5,7 +5,7 @@ import {
   addDoc,
   doc,
   updateDoc,
-  deleteDoc, // إضافة دالة الحذف من فايربيز
+  deleteDoc, 
   arrayUnion,
   query,
   orderBy,
@@ -65,7 +65,6 @@ function ClientsPage() {
 
   useEffect(() => { fetchClients(); }, [fetchClients]);
 
-  // دالة حذف العميل نهائياً
   const deleteClient = async (clientId, clientName) => {
     if (window.confirm(`هل أنت متأكد من حذف العميل "${clientName}" وجميع فواتيره نهائياً؟ لا يمكن التراجع عن هذا الإجراء.`)) {
       try {
