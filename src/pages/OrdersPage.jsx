@@ -81,7 +81,6 @@ function ClientsPage() {
 
   useEffect(() => { fetchClients(); }, [fetchClients]);
 
-  // دالة حذف العميل (تمت إعادتها)
   const deleteClient = async (clientId, clientName) => {
     if (window.confirm(`هل أنت متأكد من حذف العميل "${clientName}" نهائياً؟`)) {
       try {
@@ -93,7 +92,6 @@ function ClientsPage() {
     }
   };
 
-  // دالة حذف الأوردر (تمت إعادتها)
   const deleteOrder = async (clientId, orderIndex) => {
     if (!window.confirm("هل تريد حذف هذه الفاتورة؟")) return;
     try {
@@ -113,28 +111,7 @@ function ClientsPage() {
     window.open(`https://wa.me/${formattedPhone}`, '_blank');
   };
 
-  const saveClient = async () => {
-    try {
-      let clientIdForOrder = null;
-      if (modalClient) {
-        await updateDoc(doc(db, "clients", modalClient.id), { ...clientForm });
-        clientIdForOrder = modalClient.id;
-      } else {
-        const randomCode = Math.floor(1000 + Math.random() * 9000).toString();
-        const docRef = await addDoc(collection(db, "clients"), { 
-            ...clientForm, clientCode: randomCode, orders: [], createdAt: new Date().toISOString() 
-        });
-        clientIdForOrder = docRef.id;
-      }
-      const updatedClients = await fetchClients(); 
-      setShowClientModal(false);
-      if (!modalClient) openOrderModal(clientIdForOrder, null, null, updatedClients);
-      setSuccessMessage("تم الحفظ!");
-      setTimeout(() => setSuccessMessage(""), 3000);
-    } catch (err) { alert(err.message); }
-  };
-
-  const openOrderModal = (clientId, order = null, orderIndex = null) => {
+  const openOrderModal = useCallback((clientId, order = null, orderIndex = null) => {
     setCurrentClientId(clientId);
     setModalOrder(orderIndex !== null ? { ...order, index: orderIndex } : null);
     if (order) {
@@ -148,6 +125,27 @@ function ClientsPage() {
       setOrderForm({ items: [{ name: "", price: "" }], discountPercentage: 0, total: 0, status: "NEW", date: new Date().toISOString().split("T")[0] });
     }
     setShowOrderModal(true);
+  }, []);
+
+  const saveClient = async () => {
+    try {
+      let clientIdForOrder = null;
+      if (modalClient) {
+        await updateDoc(doc(db, "clients", modalClient.id), { ...clientForm });
+        clientIdForOrder = modalClient.id;
+      } else {
+        const randomCode = Math.floor(1000 + Math.random() * 9000).toString();
+        const docRef = await addDoc(collection(db, "clients"), { 
+            ...clientForm, clientCode: randomCode, orders: [], createdAt: new Date().toISOString() 
+        });
+        clientIdForOrder = docRef.id;
+      }
+      await fetchClients(); 
+      setShowClientModal(false);
+      if (!modalClient) openOrderModal(clientIdForOrder);
+      setSuccessMessage("تم الحفظ!");
+      setTimeout(() => setSuccessMessage(""), 3000);
+    } catch (err) { alert(err.message); }
   };
 
   const saveOrder = async () => {
@@ -155,7 +153,7 @@ function ClientsPage() {
       const clientRef = doc(db, "clients", currentClientId);
       const client = clients.find((c) => c.id === currentClientId);
       const subTotal = orderForm.items.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
-      const finalTotal = (subTotal - (subTotal * (orderForm.discountPercentage / 100))).toFixed(2);
+      const finalTotal = (subTotal - (subTotal * (parseFloat(orderForm.discountPercentage) / 100))).toFixed(2);
       const orderData = { ...orderForm, total: finalTotal };
 
       if (modalOrder) {
@@ -177,16 +175,21 @@ function ClientsPage() {
       c.phone?.includes(searchTerm) || 
       (c.clientCode && c.clientCode.includes(searchTerm))
     );
+
     if (statusFilter !== "ALL") {
         filtered = filtered.filter(c => c.orders && c.orders.some(o => o.status === statusFilter));
     }
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
     return [...filtered].sort((a, b) => {
       if (sortBy === "allTime") {
         const totalA = a.orders?.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0) || 0;
         const totalB = b.orders?.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0) || 0;
         return totalB - totalA;
+      }
+      if (sortBy === "recent") {
+        const dateA = a.orders?.length > 0 ? new Date(a.orders[a.orders.length - 1].date).getTime() : 0;
+        const dateB = b.orders?.length > 0 ? new Date(b.orders[b.orders.length - 1].date).getTime() : 0;
+        return dateB - dateA;
       }
       return 0;
     });
@@ -257,8 +260,7 @@ function ClientsPage() {
                   </div>
                   <button onClick={() => openOrderModal(client.id)} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-sm font-bold">أوردر جديد</button>
                   <button onClick={() => { setModalClient(client); setClientForm({...client}); setShowClientModal(true); }} className="bg-gray-100 text-gray-600 px-4 py-2 rounded-xl text-sm font-bold">تعديل</button>
-                  {/* زر حذف العميل (تمت إعادته) */}
-                  <button onClick={() => deleteClient(client.id, client.name)} className="text-red-500 hover:bg-red-50 p-2 rounded-xl transition-all" title="حذف العميل">🗑️</button>
+                  <button onClick={() => deleteClient(client.id, client.name)} className="text-red-500 hover:bg-red-50 p-2 rounded-xl transition-all">🗑️</button>
                 </div>
               </div>
 
@@ -279,7 +281,7 @@ function ClientsPage() {
                         const originalIndex = client.orders.length - 1 - idx;
                         const statusInfo = ORDER_STATUSES[o.status || "NEW"];
                         return (
-                          <tr key={idx} className="hover:bg-gray-50/50">
+                          <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
                             <td className="py-3 text-xs text-gray-500">{o.date}</td>
                             <td className="py-3"><span className={`text-[10px] text-white px-2 py-0.5 rounded-full font-bold ${statusInfo.color}`}>{statusInfo.label}</span></td>
                             <td className="py-3">
@@ -290,7 +292,6 @@ function ClientsPage() {
                             <td className="py-3 text-center font-bold text-gray-800">{o.total} ج</td>
                             <td className="py-3 text-center flex justify-center gap-3">
                               <button onClick={() => openOrderModal(client.id, o, originalIndex)} className="text-blue-500 hover:bg-blue-50 px-2 py-1 rounded text-xs font-bold">تعديل</button>
-                              {/* زر حذف الأوردر (تمت إعادته) */}
                               <button onClick={() => deleteOrder(client.id, originalIndex)} className="text-red-400 hover:bg-red-50 px-2 py-1 rounded text-xs">حذف</button>
                             </td>
                           </tr>
@@ -307,10 +308,10 @@ function ClientsPage() {
 
       <TailwindModal show={showClientModal} onClose={() => setShowClientModal(false)} title="بيانات العميل">
         <div className="space-y-4">
-          <input className="w-full border p-3 rounded-xl" placeholder="اسم العميل" value={clientForm.name} onChange={(e)=>setClientForm({...clientForm, name: e.target.value})} />
-          <input className="w-full border p-3 rounded-xl" placeholder="رقم الهاتف" value={clientForm.phone} onChange={(e)=>setClientForm({...clientForm, phone: e.target.value})} />
-          <input className="w-full border p-3 rounded-xl" placeholder="العنوان" value={clientForm.address} onChange={(e)=>setClientForm({...clientForm, address: e.target.value})} />
-          <button onClick={saveClient} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg">حفظ بيانات العميل</button>
+          <input className="w-full border p-3 rounded-xl outline-none" placeholder="اسم العميل" value={clientForm.name} onChange={(e)=>setClientForm({...clientForm, name: e.target.value})} />
+          <input className="w-full border p-3 rounded-xl outline-none" placeholder="رقم الهاتف" value={clientForm.phone} onChange={(e)=>setClientForm({...clientForm, phone: e.target.value})} />
+          <input className="w-full border p-3 rounded-xl outline-none" placeholder="العنوان" value={clientForm.address} onChange={(e)=>setClientForm({...clientForm, address: e.target.value})} />
+          <button onClick={saveClient} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold">حفظ بيانات العميل</button>
         </div>
       </TailwindModal>
 
@@ -337,10 +338,10 @@ function ClientsPage() {
                 </div>
                 {orderForm.items.map((item, idx) => (
                     <div key={idx} className="flex gap-2 mb-2">
-                        <input className="flex-1 border p-2 rounded-lg text-sm text-right" placeholder="اسم الصنف" value={item.name} onChange={(e) => {
+                        <input className="flex-1 border p-2 rounded-lg text-sm text-right outline-none" placeholder="اسم الصنف" value={item.name} onChange={(e) => {
                             const newItems = [...orderForm.items]; newItems[idx].name = e.target.value; setOrderForm({...orderForm, items: newItems});
                         }} />
-                        <input type="number" className="w-20 border p-2 rounded-lg text-sm text-center" placeholder="السعر" value={item.price} onChange={(e) => {
+                        <input type="number" className="w-20 border p-2 rounded-lg text-sm text-center outline-none" placeholder="السعر" value={item.price} onChange={(e) => {
                             const newItems = [...orderForm.items]; newItems[idx].price = e.target.value; setOrderForm({...orderForm, items: newItems});
                         }} />
                         {orderForm.items.length > 1 && (
@@ -350,8 +351,8 @@ function ClientsPage() {
                 ))}
                 
                 <div className="mt-4 flex gap-4 border-t pt-4">
-                    <button onClick={() => setOrderForm({...orderForm, discountPercentage: 5})} className={`flex-1 p-2 rounded-lg font-bold text-xs border-2 ${orderForm.discountPercentage == 5 ? 'border-blue-600 bg-blue-50' : 'border-gray-200'}`}>🎖️ ميدالية 5%</button>
-                    <button onClick={() => setOrderForm({...orderForm, discountPercentage: 10})} className={`flex-1 p-2 rounded-lg font-bold text-xs border-2 ${orderForm.discountPercentage == 10 ? 'border-blue-600 bg-blue-50' : 'border-gray-200'}`}>🥇 ميدالية 10%</button>
+                    <button onClick={() => setOrderForm({...orderForm, discountPercentage: 5})} className={`flex-1 p-2 rounded-lg font-bold text-xs border-2 ${orderForm.discountPercentage === 5 ? 'border-blue-600 bg-blue-50' : 'border-gray-200'}`}>🎖️ ميدالية 5%</button>
+                    <button onClick={() => setOrderForm({...orderForm, discountPercentage: 10})} className={`flex-1 p-2 rounded-lg font-bold text-xs border-2 ${orderForm.discountPercentage === 10 ? 'border-blue-600 bg-blue-50' : 'border-gray-200'}`}>🥇 ميدالية 10%</button>
                     <div className="w-20">
                         <label className="text-[10px] font-bold text-gray-400 block text-right font-bold">خصم %</label>
                         <input type="number" className="w-full border p-1 rounded-lg text-center" value={orderForm.discountPercentage} onChange={(e)=>setOrderForm({...orderForm, discountPercentage: e.target.value})} />
@@ -371,7 +372,7 @@ function ClientsPage() {
                     <tbody>{orderForm.items.map((item, i) => (<tr key={i} className="border-b"><td className="py-1">{item.name || "-"}</td><td className="py-1 text-left">{item.price || 0} ج</td></tr>))}</tbody>
                 </table>
                 <div className="bg-gray-900 text-white p-2 rounded-lg flex justify-between items-center font-bold">
-                    <span className="text-lg">{(orderForm.items.reduce((s,i)=> s + (parseFloat(i.price)||0), 0) * (1 - (orderForm.discountPercentage/100))).toFixed(2)} ج</span>
+                    <span className="text-lg">{(orderForm.items.reduce((s,i)=> s + (parseFloat(i.price)||0), 0) * (1 - (parseFloat(orderForm.discountPercentage)/100))).toFixed(2)} ج</span>
                     <span className="text-xs">الإجمالي النهائي:</span>
                 </div>
             </div>
