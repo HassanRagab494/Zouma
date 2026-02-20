@@ -215,6 +215,35 @@ function ClientsPage() {
     }
   };
 
+  // دالة الطباعة المضافة
+  const handlePrint = () => {
+    if (invoiceRef.current) {
+      const printContent = invoiceRef.current.innerHTML;
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`
+        <html dir="rtl">
+          <head>
+            <title>Zouma Invoice - Print</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <style>
+              body { font-family: sans-serif; padding: 20px; }
+              @media print {
+                .no-print { display: none; }
+                body { padding: 0; }
+              }
+            </style>
+          </head>
+          <body onload="window.print();window.close()">
+            <div class="max-w-sm mx-auto border-2 border-dashed p-6 rounded-xl">
+              ${printContent}
+            </div>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+  };
+
   const subTotalCalc = orderForm.items.reduce((s, i) => s + (parseFloat(i.price) || 0), 0);
   const finalTotalCalc = (subTotalCalc * (1 - (parseFloat(orderForm.discountPercentage || 0) / 100))).toFixed(2);
   const remainingCalc = (parseFloat(finalTotalCalc) - parseFloat(orderForm.paidAmount || 0)).toFixed(2);
@@ -225,6 +254,7 @@ function ClientsPage() {
     <div className="container mx-auto px-4 py-8 text-right" dir="rtl">
       <h1 className="text-3xl font-bold text-center mb-8 uppercase italic">Z O U M A <span className="text-blue-600 italic">Dashboard</span></h1>
 
+      {/* شريط الفلترة */}
       <div className="flex flex-wrap justify-center gap-2 mb-6">
         <button onClick={() => setStatusFilter("ALL")} className={`px-4 py-2 rounded-full font-bold text-sm transition-all ${statusFilter === "ALL" ? 'bg-black text-white' : 'bg-gray-200 text-gray-600'}`}>الكل</button>
         {Object.entries(ORDER_STATUSES).map(([key, info]) => (
@@ -234,6 +264,7 @@ function ClientsPage() {
         ))}
       </div>
 
+      {/* البحث */}
       <div className="flex flex-col md:flex-row gap-4 mb-8 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
         <input className="flex-1 border-2 border-gray-100 p-3 rounded-lg outline-none focus:border-blue-400 text-right font-bold" placeholder="ابحث بالاسم أو الهاتف أو الكود..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         <div className="flex gap-2">
@@ -285,6 +316,7 @@ function ClientsPage() {
                 </div>
               </div>
 
+              {/* جدول الطلبات */}
               {client.orders && client.orders.length > 0 && (
                 <div className="p-4 overflow-x-auto bg-white">
                   <table className="w-full text-right border-collapse">
@@ -350,10 +382,12 @@ function ClientsPage() {
         </div>
       </TailwindModal>
 
+      {/* مودال الأوردر - تم إضافة زر الطباعة */}
       <TailwindModal show={showOrderModal} onClose={() => setShowOrderModal(false)} title="تفاصيل الأوردر" footer={
         <div className="flex gap-2 w-full font-bold">
+            <button onClick={handlePrint} className="bg-green-600 text-white px-4 py-2 rounded-lg flex-1 hover:bg-green-700 transition-all">طباعة الفاتورة 🖨️</button>
             <button onClick={handleDownloadImage} className="bg-gray-800 text-white px-4 py-2 rounded-lg flex-1 hover:bg-black transition-all">تحميل صورة 📸</button>
-            <button onClick={saveOrder} className="bg-blue-600 text-white px-6 py-2 rounded-lg flex-1 hover:bg-blue-700 transition-all">حفظ الأوردر ✅</button>
+            <button onClick={saveOrder} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex-1 hover:bg-blue-700 transition-all">حفظ الأوردر ✅</button>
         </div>
       }>
         <div className="space-y-4">
@@ -401,6 +435,7 @@ function ClientsPage() {
                 </div>
             </div>
 
+            {/* معاينة الفاتورة قبل الطباعة */}
             <div ref={invoiceRef} className="bg-white p-6 border-2 border-dashed border-gray-200 rounded-xl text-center shadow-lg mx-auto" style={{ width: '350px' }}>
                 <h2 className="text-2xl font-black mb-1 text-gray-800 uppercase italic tracking-tighter">Z O U M A</h2>
                 <div className={`text-[10px] inline-block px-3 py-1 rounded-full text-white font-bold mb-4 shadow-sm ${ORDER_STATUSES[orderForm.status || "NEW"].color}`}>{ORDER_STATUSES[orderForm.status || "NEW"].label}</div>
