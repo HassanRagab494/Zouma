@@ -215,7 +215,6 @@ function ClientsPage() {
     }
   };
 
-  // دالة الطباعة المضافة
   const handlePrint = () => {
     if (invoiceRef.current) {
       const printContent = invoiceRef.current.innerHTML;
@@ -283,6 +282,9 @@ function ClientsPage() {
       <div className="grid gap-6">
         {processedClients.map((client) => {
           const totalSpent = client.orders?.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0) || 0;
+          const totalPaid = client.orders?.reduce((sum, o) => sum + (parseFloat(o.paidAmount) || 0), 0) || 0;
+          const totalDebt = (totalSpent - totalPaid).toFixed(2);
+          
           const has10Percent = client.orders?.some(o => parseFloat(o.discountPercentage) === 10);
           const has5Percent = client.orders?.some(o => parseFloat(o.discountPercentage) === 5);
 
@@ -307,8 +309,12 @@ function ClientsPage() {
                 
                 <div className="flex items-center gap-3">
                   <div className="text-left border-l pl-4 border-gray-200 font-bold">
-                     <p className="text-[10px] text-gray-400 uppercase">إجمالي المسحوبات</p>
-                     <p className="text-lg text-blue-600">{totalSpent.toFixed(2)} ج</p>
+                     <p className="text-[10px] text-gray-400 uppercase">المسحوبات</p>
+                     <p className="text-sm text-blue-600">{totalSpent.toFixed(2)} ج</p>
+                  </div>
+                  <div className="text-left border-l pl-4 border-gray-200 font-bold">
+                     <p className="text-[10px] text-gray-400 uppercase">المتبقي الكلي</p>
+                     <p className={`text-sm ${parseFloat(totalDebt) > 0 ? 'text-red-600' : 'text-gray-400'}`}>{totalDebt} ج</p>
                   </div>
                   <button onClick={() => openOrderModal(client.id)} className="bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm">أوردر جديد</button>
                   <button onClick={() => { setModalClient(client); setClientForm({...client}); setShowClientModal(true); }} className="bg-gray-100 text-gray-600 px-4 py-2 rounded-xl text-sm font-bold">تعديل</button>
@@ -327,6 +333,8 @@ function ClientsPage() {
                         <th className="pb-2 font-bold">الحالة</th>
                         <th className="pb-2 font-bold text-center">تغيير سريع</th>
                         <th className="pb-2 font-bold text-center">الإجمالي</th>
+                        <th className="pb-2 font-bold text-center">المدفوع</th>
+                        <th className="pb-2 font-bold text-center">المتبقي</th>
                         <th className="pb-2 font-bold text-center">الإجراء</th>
                       </tr>
                     </thead>
@@ -334,6 +342,10 @@ function ClientsPage() {
                       {client.orders.slice().reverse().map((o, idx) => {
                         const originalIndex = client.orders.length - 1 - idx;
                         const statusInfo = ORDER_STATUSES[o.status || "NEW"];
+                        const currentOrderTotal = parseFloat(o.total || 0);
+                        const currentOrderPaid = parseFloat(o.paidAmount || 0);
+                        const currentOrderRemaining = (currentOrderTotal - currentOrderPaid).toFixed(2);
+
                         return (
                           <tr key={idx} className="hover:bg-gray-50 transition-colors">
                             <td className="py-3 text-xs text-gray-500">{o.date}</td>
@@ -351,6 +363,10 @@ function ClientsPage() {
                                 </div>
                             </td>
                             <td className="py-3 text-center font-bold text-gray-800">{o.total} ج</td>
+                            <td className="py-3 text-center font-bold text-green-600">{o.paidAmount || 0} ج</td>
+                            <td className={`py-3 text-center font-bold ${parseFloat(currentOrderRemaining) > 0 ? 'text-red-500' : 'text-gray-400'}`}>
+                                {currentOrderRemaining} ج
+                            </td>
                             <td className="py-3 text-center flex justify-center gap-3">
                               <button onClick={() => openOrderModal(client.id, o, originalIndex)} className="text-blue-500 hover:bg-blue-50 px-2 py-1 rounded text-xs font-bold">تعديل</button>
                               <button onClick={() => deleteOrder(client.id, originalIndex)} className="text-red-400 text-xs">حذف</button>
@@ -367,22 +383,20 @@ function ClientsPage() {
         })}
       </div>
 
+      {/* مودالات الإضافة والتعديل (نفسها كما كانت) */}
       <TailwindModal show={showClientModal} onClose={() => setShowClientModal(false)} title="بيانات العميل">
         <div className="space-y-4">
           <input className="w-full border p-3 rounded-xl outline-none" placeholder="اسم العميل" value={clientForm.name} onChange={(e)=>setClientForm({...clientForm, name: e.target.value})} />
           <input className="w-full border p-3 rounded-xl outline-none" placeholder="رقم الهاتف" value={clientForm.phone} onChange={(e)=>setClientForm({...clientForm, phone: e.target.value})} />
-          
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-gray-400 pr-2 uppercase">تاريخ الميلاد</label>
             <input type="date" className="w-full border p-3 rounded-xl outline-none" value={clientForm.dob} onChange={(e)=>setClientForm({...clientForm, dob: e.target.value})} />
           </div>
-
           <input className="w-full border p-3 rounded-xl outline-none" placeholder="العنوان" value={clientForm.address} onChange={(e)=>setClientForm({...clientForm, address: e.target.value})} />
           <button onClick={saveClient} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold shadow-lg">حفظ بيانات العميل</button>
         </div>
       </TailwindModal>
 
-      {/* مودال الأوردر - تم إضافة زر الطباعة */}
       <TailwindModal show={showOrderModal} onClose={() => setShowOrderModal(false)} title="تفاصيل الأوردر" footer={
         <div className="flex gap-2 w-full font-bold">
             <button onClick={handlePrint} className="bg-green-600 text-white px-4 py-2 rounded-lg flex-1 hover:bg-green-700 transition-all">طباعة الفاتورة 🖨️</button>
@@ -435,7 +449,7 @@ function ClientsPage() {
                 </div>
             </div>
 
-            {/* معاينة الفاتورة قبل الطباعة */}
+            {/* معاينة الفاتورة */}
             <div ref={invoiceRef} className="bg-white p-6 border-2 border-dashed border-gray-200 rounded-xl text-center shadow-lg mx-auto" style={{ width: '350px' }}>
                 <h2 className="text-2xl font-black mb-1 text-gray-800 uppercase italic tracking-tighter">Z O U M A</h2>
                 <div className={`text-[10px] inline-block px-3 py-1 rounded-full text-white font-bold mb-4 shadow-sm ${ORDER_STATUSES[orderForm.status || "NEW"].color}`}>{ORDER_STATUSES[orderForm.status || "NEW"].label}</div>
@@ -448,7 +462,7 @@ function ClientsPage() {
                     <tbody className="divide-y divide-gray-100">{orderForm.items.map((item, i) => (<tr key={i}><td className="py-1">{item.name || "-"}</td><td className="py-1 text-left font-sans">{item.price || 0} ج</td></tr>))}</tbody>
                 </table>
                 <div className="border-t pt-2 space-y-1 text-xs font-bold text-right">
-                    <div className="flex justify-between text-gray-500"><span>الإجمالي قبل الخصم:</span><span>{subTotalCalc} ج</span></div>
+                    <div className="flex justify-between text-gray-500"><span>الإجمالي:</span><span>{subTotalCalc} ج</span></div>
                     {parseFloat(orderForm.discountPercentage) > 0 && <div className="flex justify-between text-red-500 italic"><span>الخصم ({orderForm.discountPercentage}%):</span><span>-{(subTotalCalc * parseFloat(orderForm.discountPercentage) / 100).toFixed(2)} ج</span></div>}
                     <div className="flex justify-between bg-gray-900 text-white p-2 rounded-lg mt-2 text-sm shadow-md"><span>الصافي النهائي:</span><span>{finalTotalCalc} ج</span></div>
                     <div className="flex justify-between text-green-600 px-1 pt-1 underline decoration-dotted"><span>تم دفع:</span><span>{orderForm.paidAmount} ج</span></div>
