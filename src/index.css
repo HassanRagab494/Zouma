@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+
+
+.text-2xl{
+  margin-top: 3rem !important;
+}
