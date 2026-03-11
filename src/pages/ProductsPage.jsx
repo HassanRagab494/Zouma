@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, orderBy } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 
-// مكون الموديول الأساسي
+
 const TailwindModal = ({ show, onClose, title, children, footer }) => {
     if (!show) return null;
     return (
@@ -57,7 +57,6 @@ function ProductsPage() {
 
   useEffect(() => { fetchProducts(); }, []);
 
-  // دالة الحفظ العادية (تستخدم عند الإضافة الجديدة كلياً، أو عند التعديل اليدوي من زر "تعديل")
   const executeSave = async (idToUpdate) => {
     try {
       const productData = {
@@ -80,18 +79,16 @@ function ProductsPage() {
     }
   };
 
-  // دالة التحديث في حالة اكتشاف منتج مكرر (تضيف الكميات لبعضها)
   const handleUpdateDuplicate = async () => {
     try {
-      // جمع الكمية القديمة مع الكمية الجديدة
       const combinedStock = Number(duplicateProduct.stock) + Number(productForm.stock);
 
       const updatedData = {
-        serial: Number(duplicateProduct.serial), // نحافظ على التسلسل القديم للمنتج
+        serial: Number(duplicateProduct.serial), 
         name: productForm.name,
-        wholesalePrice: Number(productForm.wholesalePrice), // نحدث الأسعار للجديدة
+        wholesalePrice: Number(productForm.wholesalePrice),
         sellingPrice: Number(productForm.sellingPrice),
-        stock: combinedStock, // الكمية الإجمالية
+        stock: combinedStock, 
       };
 
       await updateDoc(doc(db, "products", duplicateProduct.id), updatedData);
