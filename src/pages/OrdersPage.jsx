@@ -468,33 +468,48 @@ function ClientsPage() {
                     <div key={idx} className="flex gap-2 mb-2 items-start relative">
                         
                         <div className="flex-1 relative">
-                            <input 
-                                type="text"
-                                className="w-full border p-2 rounded-lg text-sm text-right outline-none bg-white font-bold text-gray-700"
-                                placeholder="ابحث عن الصنف..."
-                                value={item.searchQuery !== undefined ? item.searchQuery : item.name}
-                                onChange={(e) => {
-                                    const val = e.target.value;
-                                    const newItems = [...orderForm.items];
-                                    newItems[idx].searchQuery = val;
-                                    newItems[idx].showDropdown = true; 
-                                    setOrderForm({...orderForm, items: newItems});
-                                }}
-                                onBlur={() => {
-                                    setTimeout(() => {
-                                        const newItems = [...orderForm.items];
-                                        if (newItems[idx]) {
-                                            newItems[idx].showDropdown = false;
-                                            setOrderForm({...orderForm, items: newItems});
-                                        }
-                                    }, 200);
-                                }}
-                                onFocus={() => {
-                                    const newItems = [...orderForm.items];
-                                    newItems[idx].showDropdown = true;
-                                    setOrderForm({...orderForm, items: newItems});
-                                }}
-                            />
+                        <input 
+    type="text"
+    className="w-full border p-2 rounded-lg text-sm text-right outline-none bg-white font-bold text-gray-700"
+    placeholder="ابحث عن الصنف..."
+    value={item.searchQuery !== undefined ? item.searchQuery : item.name}
+    onChange={(e) => {
+        const val = e.target.value;
+        const newItems = [...orderForm.items];
+        
+        newItems[idx].searchQuery = val;
+        newItems[idx].name = val; 
+        newItems[idx].showDropdown = true; 
+
+        const exactMatch = availableProducts.find(
+            p => p.name.trim().toLowerCase() === val.trim().toLowerCase()
+        );
+
+        if (exactMatch && exactMatch.stock > 0) {
+            newItems[idx].productId = exactMatch.id; 
+            newItems[idx].unitPrice = exactMatch.sellingPrice;
+            newItems[idx].price = exactMatch.sellingPrice * (newItems[idx].qty || 1);
+        } else {
+            newItems[idx].productId = ""; 
+        }
+
+        setOrderForm({...orderForm, items: newItems});
+    }}
+    onBlur={() => {
+        setTimeout(() => {
+            const newItems = [...orderForm.items];
+            if (newItems[idx]) {
+                newItems[idx].showDropdown = false;
+                setOrderForm({...orderForm, items: newItems});
+            }
+        }, 200);
+    }}
+    onFocus={() => {
+        const newItems = [...orderForm.items];
+        newItems[idx].showDropdown = true;
+        setOrderForm({...orderForm, items: newItems});
+    }}
+/>
 
                             {item.showDropdown && (
                                 <ul className="absolute z-50 bg-white border border-gray-200 shadow-xl w-full max-h-40 overflow-y-auto rounded-lg mt-1 text-right">
@@ -504,7 +519,6 @@ function ClientsPage() {
                                             <li 
                                                 key={p.id} 
                                                 className={`p-2 border-b cursor-pointer hover:bg-blue-50 text-sm font-bold ${p.stock <= 0 ? 'text-red-400 opacity-50 bg-red-50' : 'text-gray-800'}`}
-                                                /* ======= التعديل السحري هنا ======= */
                                                 onMouseDown={() => { 
                                                     if (p.stock > 0) {
                                                         const newItems = [...orderForm.items];
