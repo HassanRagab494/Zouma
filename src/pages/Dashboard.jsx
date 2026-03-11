@@ -45,22 +45,19 @@ function Dashboard() {
     }
   };
 
-  // -----------------------------------------------------
-  // الحسابات البرمجية (معزولة بـ useMemo لسرعة الأداء)
-  // -----------------------------------------------------
+  
   const stats = useMemo(() => {
     const allOrders = clients.flatMap((c) => c.orders || []);
-    let totalRevenue = 0;   // المبيعات الكلية
-    let totalCollected = 0; // الكاش اللي دخل الدرج
+    let totalRevenue = 0;  
+    let totalCollected = 0; 
 
     allOrders.forEach((o) => {
       totalRevenue += parseFloat(o.total) || 0;
       totalCollected += parseFloat(o.paidAmount) || 0;
     });
 
-    const totalDebts = totalRevenue - totalCollected; // الفلوس اللي ليك بره
+    const totalDebts = totalRevenue - totalCollected;
 
-    // حساب مبيعات الشهور للسنة الحالية
     const currentYear = new Date().getFullYear();
     const salesPerMonth = Array(12).fill(0);
     
@@ -71,7 +68,6 @@ function Dashboard() {
       }
     });
 
-    // أفضل العملاء (الأكثر سحباً للبضاعة)
     const topClients = [...clients]
       .map(c => ({
         ...c,
@@ -92,9 +88,7 @@ function Dashboard() {
     };
   }, [clients]);
 
-  // -----------------------------------------------------
-  // إعدادات المخطط البياني (Chart)
-  // -----------------------------------------------------
+ 
   const months = ["يناير","فبراير","مارس","إبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
   
   const salesData = {
@@ -134,7 +128,6 @@ function Dashboard() {
     },
   };
 
-  // شاشة التحميل
   if (loading) return (
     <div className="flex flex-col justify-center items-center h-screen bg-gray-50">
         <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
@@ -147,15 +140,13 @@ function Dashboard() {
       
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 mt-4">
           <div>
-            <h2 className="text-3xl font-black text-gray-800 tracking-tight">لوحة التحكم <span className="text-blue-600">الذكية</span></h2>
+            <h2 className="text-3xl font-black text-gray-800 tracking-tight">لوحة التحكم </h2>
             <p className="text-sm text-gray-500 font-bold mt-1">ملخص مالي وإحصائي لحركة المحل</p>
           </div>
       </div>
 
-      {/* ---------------- كروت الإحصائيات (4 كروت بدلاً من 3) ---------------- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         
-        {/* الكارت 1: المبيعات الإجمالية */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 border-r-4 border-r-blue-500 hover:-translate-y-1 transition-transform duration-300">
           <div className="flex justify-between items-start">
               <div>
@@ -168,7 +159,6 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* الكارت 2: الكاش المحصل (الخزينة) */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 border-r-4 border-r-green-500 hover:-translate-y-1 transition-transform duration-300">
           <div className="flex justify-between items-start">
               <div>
@@ -181,7 +171,6 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* الكارت 3: الديون المتبقية */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 border-r-4 border-r-red-500 hover:-translate-y-1 transition-transform duration-300">
           <div className="flex justify-between items-start">
               <div>
@@ -194,7 +183,6 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* الكارت 4: إحصائيات عامة */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 border-r-4 border-r-purple-500 hover:-translate-y-1 transition-transform duration-300">
           <div className="flex justify-between items-start">
               <div>
@@ -209,10 +197,8 @@ function Dashboard() {
 
       </div>
 
-      {/* ---------------- المخطط وقائمة أفضل العملاء ---------------- */}
       <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* المخطط البياني */}
         <div className="lg:col-span-2 bg-white shadow-sm border border-gray-100 rounded-2xl p-6">
           <div className="flex justify-between items-center mb-6">
             <h5 className="text-lg font-black text-gray-800">مؤشر المبيعات الشهري</h5>
@@ -223,10 +209,9 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* قائمة أفضل العملاء */}
         <div className="bg-white shadow-sm border border-gray-100 rounded-2xl p-6 flex flex-col">
           <h5 className="text-lg font-black mb-6 text-gray-800 flex items-center gap-2">
-            ⭐ أفضل العملاء (Top 5)
+             أفضل العملاء (Top 5)
           </h5>
           <div className="flex-1 overflow-y-auto pr-1">
               <ul className="space-y-3">
