@@ -13,9 +13,11 @@ const TailwindModal = ({ show, onClose, title, children, footer }) => {
             <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
           </div>
           <div className="p-4 overflow-y-auto flex-1 text-right">{children}</div>
-          <div className="flex justify-end p-4 border-t border-gray-200 gap-2">
-            {footer}
-          </div>
+          {footer && (
+            <div className="flex justify-end p-4 border-t border-gray-200 gap-2">
+              {footer}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -27,8 +29,10 @@ function ProductsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   
-  // <--- إضافة ستيت البحث --->
   const [searchTerm, setSearchTerm] = useState("");
+
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicateProduct, setDuplicateProduct] = useState(null);
 
   const [productForm, setProductForm] = useState({
     serial: "",
@@ -53,29 +57,72 @@ function ProductsPage() {
 
   useEffect(() => { fetchProducts(); }, []);
 
-  const saveProduct = async () => {
+  // دالة الحفظ العادية (تستخدم عند الإضافة الجديدة كلياً، أو عند التعديل اليدوي من زر "تعديل")
+  const executeSave = async (idToUpdate) => {
     try {
       const productData = {
         serial: Number(productForm.serial),
         name: productForm.name,
         wholesalePrice: Number(productForm.wholesalePrice),
         sellingPrice: Number(productForm.sellingPrice),
-        stock: Number(productForm.stock),
+        stock: Number(productForm.stock), // استبدال الكمية بالمدخلة
       };
 
-      if (editingId) {
-        await updateDoc(doc(db, "products", editingId), productData);
+      if (idToUpdate) {
+        await updateDoc(doc(db, "products", idToUpdate), productData);
       } else {
         await addDoc(collection(db, "products"), productData);
       }
       
-      setShowModal(false);
-      setProductForm({ serial: "", name: "", wholesalePrice: "", sellingPrice: "", stock: "" });
-      setEditingId(null);
-      fetchProducts();
+      closeAllAndRefresh();
     } catch (err) {
       alert("حدث خطأ أثناء الحفظ: " + err.message);
     }
+  };
+
+  // دالة التحديث في حالة اكتشاف منتج مكرر (تضيف الكميات لبعضها)
+  const handleUpdateDuplicate = async () => {
+    try {
+      // جمع الكمية القديمة مع الكمية الجديدة
+      const combinedStock = Number(duplicateProduct.stock) + Number(productForm.stock);
+
+      const updatedData = {
+        serial: Number(duplicateProduct.serial), // نحافظ على التسلسل القديم للمنتج
+        name: productForm.name,
+        wholesalePrice: Number(productForm.wholesalePrice), // نحدث الأسعار للجديدة
+        sellingPrice: Number(productForm.sellingPrice),
+        stock: combinedStock, // الكمية الإجمالية
+      };
+
+      await updateDoc(doc(db, "products", duplicateProduct.id), updatedData);
+      
+      closeAllAndRefresh();
+    } catch (err) {
+      alert("حدث خطأ أثناء التحديث: " + err.message);
+    }
+  };
+
+  const closeAllAndRefresh = () => {
+    setShowModal(false);
+    setShowDuplicateModal(false);
+    setProductForm({ serial: "", name: "", wholesalePrice: "", sellingPrice: "", stock: "" });
+    setEditingId(null);
+    setDuplicateProduct(null);
+    fetchProducts();
+  };
+
+  const saveProduct = async () => {
+    const existingProduct = products.find(
+      (p) => p.name.trim() === productForm.name.trim()
+    );
+
+    if (existingProduct && existingProduct.id !== editingId) {
+      setDuplicateProduct(existingProduct);
+      setShowDuplicateModal(true); 
+      return; 
+    }
+
+    await executeSave(editingId);
   };
 
   const deleteProduct = async (id, name) => {
@@ -97,14 +144,12 @@ function ProductsPage() {
     setShowModal(true);
   };
 
-  // <--- فلترة المنتجات بناءً على البحث --->
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     p.serial.toString().includes(searchTerm)
   );
 
-  // <--- حساب عدد المنتجات التي أوشكت على النفاذ (5 أو أقل) --->
-  const lowStockCount = products.filter(p => p.stock <= 5).length;
+  const lowStockCount = products.filter(p => p.stock <= 2).length;
 
   if (loading) return <div className="text-center py-20 font-bold">جاري تحميل المخزون...</div>;
 
@@ -117,18 +162,16 @@ function ProductsPage() {
         </button>
       </div>
 
-      {/* <--- شريط التحذير للنواقص ---> */}
       {lowStockCount > 0 && (
         <div className="bg-red-50 border-r-4 border-red-500 text-red-700 p-4 rounded-lg mb-6 shadow-sm flex items-center gap-3">
             <span className="text-2xl">⚠️</span>
             <div>
                 <p className="font-bold">تنبيه هام بالنواقص!</p>
-                <p className="text-sm">يوجد عدد <span className="font-black text-lg bg-red-200 px-2 rounded">{lowStockCount}</span> منتجات وصل مخزونها إلى 5 أو أقل، يرجى مراجعة الجدول المظلل باللون الأحمر.</p>
+                <p className="text-sm">يوجد عدد <span className="font-black text-lg bg-red-200 px-2 rounded">{lowStockCount}</span> منتجات وصل مخزونها إلى 2 أو أقل، يرجى مراجعة الجدول المظلل باللون الأحمر.</p>
             </div>
         </div>
       )}
 
-      {/* <--- شريط البحث ---> */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
           <input 
              type="text" 
@@ -159,13 +202,13 @@ function ProductsPage() {
                     </tr>
                 ) : (
                     filteredProducts.map((p) => (
-                    <tr key={p.id} className={`transition-colors ${p.stock <= 5 ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}>
+                    <tr key={p.id} className={`transition-colors ${p.stock <= 2 ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}>
                         <td className="p-4 font-bold text-gray-500">#{p.serial}</td>
                         <td className="p-4 font-bold text-blue-700">{p.name}</td>
                         <td className="p-4 font-bold text-gray-600">{p.wholesalePrice} ج</td>
                         <td className="p-4 font-bold text-green-700">{p.sellingPrice} ج</td>
                         <td className="p-4">
-                        <span className={`px-3 py-1 rounded-md text-xs font-black shadow-sm ${p.stock <= 0 ? 'bg-red-600 text-white' : p.stock <= 5 ? 'bg-red-200 text-red-800' : 'bg-green-100 text-green-700'}`}>
+                        <span className={`px-3 py-1 rounded-md text-xs font-black shadow-sm ${p.stock <= 0 ? 'bg-red-600 text-white' : p.stock <= 2 ? 'bg-red-200 text-red-800' : 'bg-green-100 text-green-700'}`}>
                             {p.stock} حبة
                         </span>
                         </td>
@@ -210,6 +253,35 @@ function ProductsPage() {
           <button onClick={saveProduct} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold shadow-lg mt-6 hover:bg-blue-700 transition-all text-lg tracking-wide">حفظ المنتج</button>
         </div>
       </TailwindModal>
+
+      <TailwindModal 
+        show={showDuplicateModal} 
+        onClose={() => setShowDuplicateModal(false)} 
+        title="تنبيه: منتج مكرر!"
+        footer={
+            <>
+                <button onClick={() => setShowDuplicateModal(false)} className="px-4 py-2 bg-gray-200 text-gray-800 font-bold rounded-lg hover:bg-gray-300">
+                    إلغاء التعديل
+                </button>
+                <button onClick={handleUpdateDuplicate} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700">
+                    نعم، دمج مع المنتج الموجود
+                </button>
+            </>
+        }
+      >
+        <div className="py-2">
+            <p className="text-gray-700 text-lg">المنتج <strong className="text-blue-700">"{productForm.name}"</strong> موجود بالفعل في المخزون!</p>
+            
+            <div className="bg-blue-50 p-4 rounded-lg mt-4 border border-blue-100">
+                <p className="text-gray-800 font-bold mb-2">إذا قمت بالدمج سيحدث التالي:</p>
+                <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                    <li>سيتم جمع الكمية التي أدخلتها (<span className="font-bold text-green-600">{productForm.stock}</span>) مع الكمية المتوفرة حالياً (<span className="font-bold text-blue-600">{duplicateProduct?.stock}</span>) ليصبح الإجمالي <span className="font-black text-lg bg-green-200 px-2 rounded text-black">{Number(productForm.stock) + Number(duplicateProduct?.stock)}</span>.</li>
+                    <li>سيتم تحديث الأسعار (سعر البيع والجملة) لتطابق الأسعار التي قمت بإدخالها الآن.</li>
+                </ul>
+            </div>
+        </div>
+      </TailwindModal>
+
     </div>
   );
 }
