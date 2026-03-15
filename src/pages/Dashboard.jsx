@@ -142,7 +142,7 @@ function Dashboard() {
       
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 mt-4">
           <div>
-            <h2 className="text-3xl font-black text-gray-800 dark:text-white tracking-tight transition-colors">لوحة التحكم <span className="text-blue-600 dark:text-blue-500">الذكية</span></h2>
+            <h2 className="text-3xl font-black text-gray-800 dark:text-white tracking-tight transition-colors">لوحة التحكم</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 font-bold mt-1 transition-colors">ملخص مالي وإحصائي لحركة المحل</p>
           </div>
       </div>
