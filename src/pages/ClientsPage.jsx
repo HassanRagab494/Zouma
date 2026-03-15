@@ -66,136 +66,160 @@ function ClientsPage() {
 
   const countryCode = "+20";
 
-  if (loading)
-    return <p className="text-center mt-10 text-gray-600">جارٍ تحميل البيانات...</p>;
+  if (loading) return (
+    <div className="flex flex-col justify-center items-center h-[calc(100vh-100px)] bg-transparent transition-colors duration-300">
+        <div className="w-12 h-12 border-4 border-blue-200 dark:border-gray-700 border-t-blue-600 dark:border-t-blue-500 rounded-full animate-spin mb-4"></div>
+        <p className="text-xl font-bold animate-pulse text-blue-600 dark:text-blue-400">جارٍ تحميل العملاء...</p>
+    </div>
+  );
+
   if (error)
-    return <p className="text-center mt-10 text-red-600">{error}</p>;
+    return <p className="text-center mt-10 text-red-600 font-bold bg-red-50 p-4 rounded-xl">{error}</p>;
 
   return (
-    <div className="p-4 text-right" dir="rtl">
-      <h1 className="text-2xl font-bold mb-4 text-center">لوحة إدارة العملاء (ZOUMA)</h1>
+    <div className="p-4 md:p-8 min-h-screen transition-colors duration-300 bg-gray-50/50 dark:bg-gray-900 text-right" dir="rtl">
+      
+      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 mt-2">
+          <div>
+            <h1 className="text-3xl font-black text-gray-800 dark:text-white tracking-tight">إدارة العملاء </h1>
+          </div>
+      </div>
 
-      <div className="flex justify-between items-center mb-4 bg-gray-50 p-3 rounded-lg border">
-        <p className="text-gray-700">إجمالي العملاء: <strong>{clients.length}</strong></p>
-        <span className="text-xs text-gray-400">الترتيب: حسب إجمالي المبيعات</span>
+      <div className="flex justify-between items-center mb-6 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 transition-colors duration-300">
+        <p className="text-gray-700 dark:text-gray-200 font-bold">إجمالي العملاء: <strong className="text-blue-600 dark:text-blue-400 text-lg mx-1">{clients.length}</strong> عميل</p>
+        <span className="text-[10px] sm:text-xs font-black text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-3 py-1.5 rounded-full uppercase tracking-wider">الترتيب: الأعلى مبيعاً</span>
       </div>
 
       <input
         type="text"
-        className="w-full p-3 border-2 border-blue-100 rounded-lg mb-4 focus:border-blue-500 outline-none transition"
-        placeholder="ابحث باسم، رقم الهاتف أو الكود..."
+        className="w-full p-4 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl mb-8 focus:border-blue-500 dark:focus:border-blue-500 outline-none transition-all duration-300 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 font-bold shadow-sm"
+        placeholder="ابحث باسم العميل، رقم الهاتف أو كود العميل..."
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
       />
 
-      {filteredClients.length > 0 ? (
-        filteredClients.map((client) => {
-          const totalOrdersAmount = getTotalOrdersAmount(client.orders);
-          return (
-            <div
-              key={client.id}
-              className="bg-white shadow-sm rounded-lg mb-3 p-4 cursor-pointer transform transition duration-300 hover:scale-105 flex flex-col md:flex-row justify-between items-start md:items-center"
-              onClick={() => setSelectedClient(client)}
-            >
-              <div className="mb-2 md:mb-0">
-                <strong className="text-lg">{client.name}</strong>
-                <p className="text-gray-700 mb-0">الهاتف: {client.phone}</p>
-                <p className="text-gray-700 mb-0">
-                  إجمالي المشتريات: <strong className="text-green-600">{totalOrdersAmount.toFixed(2)} ج</strong>
-                </p>
-              </div>
+      <div className="grid grid-cols-1 gap-4">
+        {filteredClients.length > 0 ? (
+          filteredClients.map((client) => {
+            const totalOrdersAmount = getTotalOrdersAmount(client.orders);
+            return (
+              <div
+                key={client.id}
+                className="bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 rounded-2xl p-5 cursor-pointer transform transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-blue-100 dark:hover:border-gray-600 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+                onClick={() => setSelectedClient(client)}
+              >
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                      <strong className="text-xl text-gray-800 dark:text-white">{client.name}</strong>
+                      {client.code && (
+                        <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-black px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-800/50">#{client.code}</span>
+                      )}
+                  </div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 font-bold mt-1">الهاتف: <span className="font-sans">{client.phone}</span></p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 font-bold mt-1.5 bg-gray-50 dark:bg-gray-900 inline-block px-3 py-1 rounded-lg border dark:border-gray-700">
+                    إجمالي المشتريات: <strong className="text-green-600 dark:text-green-400 text-base">{totalOrdersAmount.toLocaleString()} ج</strong>
+                  </p>
+                </div>
 
-              <div className="flex items-center flex-wrap gap-3">
-                {client.phone && (
-                  <a
-                    href={`https://wa.me/${countryCode}${client.phone.replace(/^0/, "")}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-green-600 text-xl"
-                    title="واتساب"
-                  >
-                    <FaWhatsapp />
-                  </a>
-                )}
-                {client.phone && (
-                  <a
-                    href={`tel:${client.phone}`}
-                    className="text-blue-600 text-xl"
-                    title="اتصال"
-                  >
-                    <FaPhone />
-                  </a>
-                )}
-                {client.code && (
-                  <span className="bg-blue-600 text-white px-2 py-1 rounded">{client.code}</span>
-                )}
+                <div className="flex items-center gap-3 w-full md:w-auto justify-end border-t md:border-none pt-3 md:pt-0 dark:border-gray-700">
+                  {client.phone && (
+                    <a
+                      href={`https://wa.me/${countryCode}${client.phone.replace(/^0/, "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 p-3 rounded-xl hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors"
+                      title="مراسلة واتساب"
+                      onClick={(e) => e.stopPropagation()} // لمنع فتح المودال عند الضغط على الزر
+                    >
+                      <FaWhatsapp size={20} />
+                    </a>
+                  )}
+                  {client.phone && (
+                    <a
+                      href={`tel:${client.phone}`}
+                      className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 p-3 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                      title="اتصال هاتفي"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <FaPhone size={18} />
+                    </a>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })
-      ) : (
-        <div className="text-center text-gray-500 mt-10">
-          لا يوجد عملاء لعرضهم أو لا توجد نتائج للبحث.
-        </div>
-      )}
+            );
+          })
+        ) : (
+          <div className="text-center text-gray-400 dark:text-gray-500 mt-10 font-bold bg-white dark:bg-gray-800 p-8 rounded-2xl border border-dashed dark:border-gray-700">
+            <span className="text-4xl block mb-3">🔍</span>
+            لا يوجد عملاء لعرضهم أو لا توجد نتائج مطابقة للبحث.
+          </div>
+        )}
+      </div>
 
+      {/* ----------------- مودال تفاصيل العميل ----------------- */}
       {selectedClient && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[2000] p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 relative max-h-[90vh] overflow-y-auto animate-fadeIn">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[2000] p-4 transition-all duration-300" dir="rtl">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-2xl p-6 relative max-h-[90vh] overflow-y-auto border border-transparent dark:border-gray-700 custom-scrollbar">
+            
             <button
-              className="absolute top-4 left-4 text-gray-400 hover:text-red-500 text-2xl font-bold"
+              className="absolute top-5 left-5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 text-2xl font-bold bg-gray-100 dark:bg-gray-800 w-8 h-8 rounded-full flex items-center justify-center pb-1 transition-colors"
               onClick={() => setSelectedClient(null)}
             >
-              ×
+              &times;
             </button>
 
-            <h2 className="text-xl font-bold mb-4">تفاصيل العميل</h2>
-            <p><strong>الاسم:</strong> {selectedClient.name}</p>
-            <p><strong>الهاتف:</strong> {selectedClient.phone}</p>
-            <p><strong>العنوان:</strong> {selectedClient.address || "غير محدد"}</p>
+            <h2 className="text-2xl font-black mb-6 text-gray-800 dark:text-white">ملف العميل</h2>
+            
+            <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700 mb-8 space-y-3 text-sm font-bold text-gray-800 dark:text-gray-200">
+               <div className="flex items-center"><span className="w-20 text-gray-400 dark:text-gray-500 uppercase tracking-widest text-[10px]">الاسم</span> <span>{selectedClient.name}</span></div>
+               <div className="flex items-center"><span className="w-20 text-gray-400 dark:text-gray-500 uppercase tracking-widest text-[10px]">الهاتف</span> <span className="font-sans text-blue-600 dark:text-blue-400">{selectedClient.phone}</span></div>
+               <div className="flex items-center"><span className="w-20 text-gray-400 dark:text-gray-500 uppercase tracking-widest text-[10px]">العنوان</span> <span>{selectedClient.address || "غير مسجل"}</span></div>
+            </div>
 
-            <h3 className="mt-6 mb-3 font-bold text-gray-800 border-r-4 border-blue-500 pr-2">سجل الأوردرات:</h3>
+            <h3 className="mt-6 mb-4 font-black text-gray-800 dark:text-white border-r-4 border-blue-500 dark:border-blue-400 pr-3 text-lg">سجل المشتريات (الأوردرات):</h3>
+            
             {selectedClient.orders && selectedClient.orders.length > 0 ? (
-              <div className="overflow-x-auto rounded-lg border">
+              <div className="overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
                 <table className="min-w-full text-sm text-center">
-                  <thead className="bg-blue-50 text-blue-700">
+                  <thead className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-b border-blue-100 dark:border-blue-900/50">
                     <tr>
-                      <th className="px-2 py-3 border">الطلب</th>
-                      <th className="px-2 py-3 border">الإجمالي</th>
-                      <th className="px-2 py-3 border">التاريخ</th>
+                      <th className="px-4 py-4 font-black">تفاصيل الطلب</th>
+                      <th className="px-4 py-4 font-black">الإجمالي</th>
+                      <th className="px-4 py-4 font-black">التاريخ</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-gray-50 dark:divide-gray-700 text-gray-700 dark:text-gray-300">
                     {selectedClient.orders.map((order, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50 transition">
-                        <td className="px-2 py-3 border">
+                      <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                        <td className="px-4 py-4 font-bold text-xs leading-relaxed max-w-[200px] truncate" title={order.items ? order.items.map(i => i.name).join(" + ") : (order.name || "أوردر")}>
                           {order.items ? order.items.map(i => i.name).join(" + ") : (order.name || "أوردر")}
                         </td>
-                        <td className="px-2 py-3 border font-bold">{Number(order.total || 0).toFixed(2)} ج</td>
-                        <td className="px-2 py-3 border text-xs">{order.date || "---"}</td>
+                        <td className="px-4 py-4 font-black text-gray-800 dark:text-gray-100">{Number(order.total || 0).toLocaleString()} ج</td>
+                        <td className="px-4 py-4 text-[10px] text-gray-400 dark:text-gray-500 font-sans tracking-wider">{order.date || "---"}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             ) : (
-              <p className="text-gray-500 italic py-4">لا يوجد أوردرات مسجلة لهذا العميل.</p>
+              <p className="text-gray-400 dark:text-gray-500 italic py-6 text-center bg-gray-50 dark:bg-gray-800 rounded-xl border border-dashed dark:border-gray-700 font-bold">لا يوجد أوردرات مسجلة لهذا العميل حتى الآن.</p>
             )}
 
-            <div className="mt-8 flex justify-between items-center gap-3">
+            <div className="mt-8 pt-6 border-t dark:border-gray-800 flex flex-wrap justify-between items-center gap-3">
               <button
-                className="bg-red-50 text-red-600 border border-red-200 px-6 py-2 rounded-lg hover:bg-red-600 hover:text-white transition font-bold"
+                className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/30 px-6 py-2.5 rounded-xl hover:bg-red-600 dark:hover:bg-red-600 hover:text-white dark:hover:text-white transition-all font-bold text-sm"
                 onClick={() => handleDeleteClient(selectedClient.id)}
               >
-                حذف العميل نهائياً
+                🗑️ حذف العميل نهائياً
               </button>
               <button
-                className="bg-gray-800 text-white px-8 py-2 rounded-lg hover:bg-black transition"
+                className="bg-gray-800 dark:bg-gray-700 text-white px-8 py-2.5 rounded-xl hover:bg-black dark:hover:bg-gray-600 transition-all font-bold text-sm shadow-md"
                 onClick={() => setSelectedClient(null)}
               >
                 إغلاق
               </button>
             </div>
+            
           </div>
         </div>
       )}
