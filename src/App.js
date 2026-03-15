@@ -27,9 +27,9 @@ function LayoutWrapper({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
-    <div className="flex min-h-screen">
+    // التعديل هنا: إضافة كلاسات الدارك مود للخلفية والنص الرئيسي
+    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
       {/* Sidebar */}
-      {/* لا تعرض الشريط الجانبي إذا كانت الصفحة هي صفحة تسجيل الدخول */}
       {!hideLayout && <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />}
 
       {/* Content */}
@@ -42,7 +42,6 @@ function LayoutWrapper({ children }) {
             : "ml-0"
         }`}
       >
-        {/* لا تعرض شريط التنقل إذا كانت الصفحة هي صفحة تسجيل الدخول */}
         {!hideLayout && <Navbar />}
         <div className="p-4">{children}</div>
       </div>
@@ -52,16 +51,9 @@ function LayoutWrapper({ children }) {
 
 function ProtectedRoute({ element: Element, permission, isAuthenticated, currentUser }) {
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  // **التعديل هنا:** التأكد من وجود currentUser قبل محاولة الوصول إلى خصائصه
-  if (!currentUser) {
-    // يمكن أن يحدث هذا إذا تم مسح localStorage يدوياً أو إذا كان هناك خطأ آخر
-    // إعادة التوجيه إلى صفحة تسجيل الدخول للتأكد من إعادة تحميل بيانات المستخدم
-    return <Navigate to="/login" replace />;
-  }
+  if (!currentUser) return <Navigate to="/login" replace />;
 
-  // تحقق من الصلاحيات، الادمن يقدر يشوف كل الصفحات
   const isAdmin = currentUser.role === "super_admin";
-  // إذا لم يكن المدير العام وليس لديه الصلاحية المطلوبة، أعد التوجيه إلى لوحة القيادة
   if (!isAdmin && (!currentUser.permissions || !currentUser.permissions.includes(permission))) {
     return <Navigate to="/" replace />;
   }
@@ -71,109 +63,40 @@ function ProtectedRoute({ element: Element, permission, isAuthenticated, current
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null); // هنا نخزن بيانات المستخدم
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
+    // ---- منطق الدارك مود الأساسي ----
+    const storedTheme = localStorage.getItem("theme");
+    // إذا كان محفوظ دارك، أو نظام الويندوز/الماك نفسه دارك
+    if (storedTheme === "dark" || (!storedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    // ----------------------------------
+
     const auth = localStorage.getItem("isAuthenticated") === "true";
     setIsAuthenticated(auth);
 
-    // **التعديل هنا:** استعادة البيانات من "userData"
     const user = JSON.parse(localStorage.getItem("userData"));
     if (user) {
       setCurrentUser(user);
     }
-  }, []); // تشغيل مرة واحدة عند تحميل المكون
+  }, []); 
 
   return (
     <Router>
       <LayoutWrapper>
         <Routes>
-          {/* Login Page */}
-          <Route
-            path="/login"
-            element={<Login setIsAuthenticated={setIsAuthenticated} setCurrentUser={setCurrentUser} />} // تمرير setCurrentUser
-          />
-
-          {/* Protected Routes */}
-          {/* هنا يجب أن تكون الروابط محمية */}
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute
-                element={Dashboard}
-                permission="dashboard"
-                isAuthenticated={isAuthenticated}
-                currentUser={currentUser}
-              />
-            }
-          />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute
-                element={Dashboard}
-                permission="dashboard"
-                isAuthenticated={isAuthenticated}
-                currentUser={currentUser}
-              />
-            }
-          />
-          <Route
-            path="/clients"
-            element={
-              <ProtectedRoute
-                element={ClientsPage}
-                permission="clients"
-                isAuthenticated={isAuthenticated}
-                currentUser={currentUser}
-              />
-            }
-          />
-          <Route
-            path="/profits"
-            element={
-              <ProtectedRoute
-                element={ProfitsPage}
-                permission="profits"
-                isAuthenticated={isAuthenticated}
-                currentUser={currentUser}
-              />
-            }
-          />
-          <Route
-            path="/orders"
-            element={
-              <ProtectedRoute
-                element={OrdersPage}
-                permission="orders"
-                isAuthenticated={isAuthenticated}
-                currentUser={currentUser}
-              />
-            }
-          />
-          <Route
-            path="/products"
-            element={
-              <ProtectedRoute
-                element={ProductsPage}
-                permission="products"
-                isAuthenticated={isAuthenticated}
-                currentUser={currentUser}
-              />
-            }
-          />
-          <Route
-            path="/users-admin"
-            element={
-              <ProtectedRoute
-                element={UsersAdminPage}
-                permission="users-admin" // تأكد من أن هذا الـ key موجود في permissionsList في UsersAdminPage
-                isAuthenticated={isAuthenticated}
-                currentUser={currentUser}
-              />
-            }
-          />
-           {/* Fallback route for unmatched paths */}
+          <Route path="/login" element={<Login setIsAuthenticated={setIsAuthenticated} setCurrentUser={setCurrentUser} />} />
+          <Route path="/" element={<ProtectedRoute element={Dashboard} permission="dashboard" isAuthenticated={isAuthenticated} currentUser={currentUser} />} />
+          <Route path="/dashboard" element={<ProtectedRoute element={Dashboard} permission="dashboard" isAuthenticated={isAuthenticated} currentUser={currentUser} />} />
+          <Route path="/clients" element={<ProtectedRoute element={ClientsPage} permission="clients" isAuthenticated={isAuthenticated} currentUser={currentUser} />} />
+          <Route path="/profits" element={<ProtectedRoute element={ProfitsPage} permission="profits" isAuthenticated={isAuthenticated} currentUser={currentUser} />} />
+          <Route path="/orders" element={<ProtectedRoute element={OrdersPage} permission="orders" isAuthenticated={isAuthenticated} currentUser={currentUser} />} />
+          <Route path="/products" element={<ProtectedRoute element={ProductsPage} permission="products" isAuthenticated={isAuthenticated} currentUser={currentUser} />} />
+          <Route path="/users-admin" element={<ProtectedRoute element={UsersAdminPage} permission="users-admin" isAuthenticated={isAuthenticated} currentUser={currentUser} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </LayoutWrapper>
