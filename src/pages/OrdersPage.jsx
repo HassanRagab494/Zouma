@@ -50,11 +50,12 @@ function ClientsPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [showClientModal, setShowClientModal] = useState(false);
   const [modalClient, setModalClient] = useState(null);
-  const [clientForm, setClientForm] = useState({ name: "", phone: "", address: "", dob: "" });
+  const [clientForm, setClientForm] = useState({ name: "", phone: "", phone2: "", address: "", dob: "" });
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [modalOrder, setModalOrder] = useState(null);
   const [currentClientId, setCurrentClientId] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
+  const [copiedPhone, setCopiedPhone] = useState(null);
   
   const invoiceRef = useRef(null);
 
@@ -65,6 +66,7 @@ function ClientsPage() {
     total: 0,
     status: "NEW",
     date: new Date().toISOString().split("T")[0],
+    notes: "",
   });
 
   const fetchClients = useCallback(async () => {
@@ -150,6 +152,12 @@ function ClientsPage() {
     window.open(`https://wa.me/${formattedPhone}`, '_blank', 'noopener,noreferrer');
   };
 
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    setCopiedPhone(text);
+    setTimeout(() => setCopiedPhone(null), 2000);
+  };
+
   const openOrderModal = useCallback((clientId, order = null, orderIndex = null) => {
     setCurrentClientId(clientId);
     setModalOrder(orderIndex !== null ? { ...order, index: orderIndex } : null);
@@ -162,10 +170,11 @@ function ClientsPage() {
         paidAmount: order.paidAmount || 0,
         items: formattedItems,
         status: order.status || "NEW",
-        date: order.date || new Date().toISOString().split("T")[0]
+        date: order.date || new Date().toISOString().split("T")[0],
+        notes: order.notes || ""
       });
     } else {
-      setOrderForm({ items: [{ productId: "", name: "", price: "", qty: 1, searchQuery: "", showDropdown: false }], discountPercentage: 0, paidAmount: 0, total: 0, status: "NEW", date: new Date().toISOString().split("T")[0] });
+      setOrderForm({ items: [{ productId: "", name: "", price: "", qty: 1, searchQuery: "", showDropdown: false }], discountPercentage: 0, paidAmount: 0, total: 0, status: "NEW", date: new Date().toISOString().split("T")[0], notes: "" });
     }
     setShowOrderModal(true);
   }, []);
@@ -335,7 +344,7 @@ function ClientsPage() {
             <option value="thisMonth">📅 مبيعات الشهر</option>
             <option value="threeMonths">🗓️ مبيعات 3 شهور</option>
           </select>
-          <button onClick={() => { setModalClient(null); setClientForm({name:"", phone:"", address:"", dob:""}); setShowClientModal(true); }} className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold shadow-md shadow-green-500/30 whitespace-nowrap transition-all">+ عميل جديد</button>
+          <button onClick={() => { setModalClient(null); setClientForm({name:"", phone:"", phone2:"", address:"", dob:""}); setShowClientModal(true); }} className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold shadow-md shadow-green-500/30 whitespace-nowrap transition-all">+ عميل جديد</button>
         </div>
       </div>
 
@@ -368,7 +377,20 @@ function ClientsPage() {
                     <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2.5 py-0.5 rounded-md text-[10px] font-black border border-blue-200 dark:border-blue-800/50">#{client.clientCode}</span>
                   </div>
                   <div className="flex flex-wrap gap-3 text-sm mt-2 justify-start items-center">
-                    <button onClick={() => openWhatsApp(client.phone)} className="text-green-600 dark:text-green-400 font-bold hover:bg-green-50 dark:hover:bg-green-900/20 px-3 py-1.5 rounded-lg border border-green-200 dark:border-green-800/50 transition-colors flex items-center gap-1.5"><span className="text-lg">🟢</span> {client.phone}</button>
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => openWhatsApp(client.phone)} className="text-green-600 dark:text-green-400 font-bold hover:bg-green-50 dark:hover:bg-green-900/20 px-3 py-1.5 rounded-lg border border-green-200 dark:border-green-800/50 transition-colors flex items-center gap-1.5"><span className="text-lg">🟢</span> {client.phone}</button>
+                      <button onClick={() => copyToClipboard(client.phone)} className={`text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 px-2 py-1.5 rounded-lg transition-colors ${copiedPhone === client.phone ? 'text-green-600 dark:text-green-400' : ''}`} title="نسخ رقم الهاتف">
+                        {copiedPhone === client.phone ? '✓' : '📋'}
+                      </button>
+                    </div>
+                    {client.phone2 && (
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => openWhatsApp(client.phone2)} className="text-green-600 dark:text-green-400 font-bold hover:bg-green-50 dark:hover:bg-green-900/20 px-3 py-1.5 rounded-lg border border-green-200 dark:border-green-800/50 transition-colors flex items-center gap-1.5"><span className="text-lg">🟢</span> {client.phone2}</button>
+                        <button onClick={() => copyToClipboard(client.phone2)} className={`text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 px-2 py-1.5 rounded-lg transition-colors ${copiedPhone === client.phone2 ? 'text-green-600 dark:text-green-400' : ''}`} title="نسخ رقم الهاتف">
+                          {copiedPhone === client.phone2 ? '✓' : '📋'}
+                        </button>
+                      </div>
+                    )}
                     <span className="text-gray-500 dark:text-gray-400 font-bold bg-gray-100 dark:bg-gray-700 px-3 py-1.5 rounded-lg">📍 {client.address || "بدون عنوان"}</span>
                     {client.dob && <span className="text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-900/20 px-3 py-1.5 rounded-lg border border-purple-100 dark:border-purple-800/50">🎂 {client.dob}</span>}
                   </div>
@@ -457,7 +479,14 @@ function ClientsPage() {
       <TailwindModal show={showClientModal} onClose={() => setShowClientModal(false)} title="بيانات العميل">
         <div className="space-y-4">
           <input className="w-full border-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3.5 rounded-xl outline-none focus:border-blue-500 text-gray-800 dark:text-white font-bold transition-colors" placeholder="اسم العميل" value={clientForm.name} onChange={(e)=>setClientForm({...clientForm, name: e.target.value})} />
-          <input className="w-full border-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3.5 rounded-xl outline-none focus:border-blue-500 text-gray-800 dark:text-white font-bold transition-colors" placeholder="رقم الهاتف" value={clientForm.phone} onChange={(e)=>setClientForm({...clientForm, phone: e.target.value})} />
+          <div>
+            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 pr-2 block mb-2">رقم الهاتف الأساسي</label>
+            <input className="w-full border-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3.5 rounded-xl outline-none focus:border-blue-500 text-gray-800 dark:text-white font-bold transition-colors" placeholder="رقم الهاتف الأساسي" value={clientForm.phone} onChange={(e)=>setClientForm({...clientForm, phone: e.target.value})} />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 pr-2 block mb-2">رقم هاتف ثاني (اختياري)</label>
+            <input className="w-full border-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3.5 rounded-xl outline-none focus:border-blue-500 text-gray-800 dark:text-white font-bold transition-colors" placeholder="رقم هاتف ثاني" value={clientForm.phone2 || ""} onChange={(e)=>setClientForm({...clientForm, phone2: e.target.value})} />
+          </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 pr-2 uppercase">تاريخ الميلاد</label>
             <input type="date" className="w-full border-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3.5 rounded-xl outline-none focus:border-blue-500 text-gray-800 dark:text-white font-bold transition-colors" value={clientForm.dob} onChange={(e)=>setClientForm({...clientForm, dob: e.target.value})} />
@@ -635,6 +664,18 @@ function ClientsPage() {
                 </div>
             </div>
 
+            {/* خانة الملحوظات */}
+            <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-200 dark:border-blue-800/50">
+              <label className="text-[10px] font-bold text-blue-600 dark:text-blue-400 block text-right pr-1 mb-2">📝 ملحوظات العميل (اختياري)</label>
+              <textarea 
+                className="w-full border-2 border-blue-200 dark:border-blue-800/50 bg-white dark:bg-gray-800 p-3 rounded-lg text-right font-medium text-gray-800 dark:text-gray-200 outline-none focus:border-blue-400 transition-colors resize-none" 
+                rows="3"
+                placeholder="أكتب أي ملحوظات أو طلبات خاصة للعميل..."
+                value={orderForm.notes || ""}
+                onChange={(e) => setOrderForm({...orderForm, notes: e.target.value})}
+              />
+            </div>
+
             {/* معاينة الفاتورة */}
             <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-2xl flex justify-center">
               <div ref={invoiceRef} className="bg-white p-6 border-2 border-dashed border-gray-300 rounded-xl text-center shadow-md text-black" style={{ width: '350px' }}>
@@ -667,6 +708,12 @@ function ClientsPage() {
                       
                       <div className="flex justify-between text-red-600 bg-red-50 p-2 rounded-lg mt-1"><span>المتبقي :</span><span className="font-black text-sm">{remainingCalc} ج</span></div>
                   </div>
+                  {orderForm.notes && (
+                    <div className="mt-4 pt-3 border-t border-gray-200 text-[10px] text-right bg-blue-50 p-2 rounded-lg">
+                      <p className="font-bold text-blue-600 mb-1">ملحوظات:</p>
+                      <p className="text-gray-700">{orderForm.notes}</p>
+                    </div>
+                  )}
                   <p className="text-[9px] text-gray-400 mt-6 text-center italic">شكراً لتعاملكم مع Zouma Store</p>
               </div>
             </div>
