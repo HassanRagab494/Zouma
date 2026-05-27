@@ -89,9 +89,9 @@ function ClientsPhoneBook() {
     } else {
       targets = previewClients;
     }
-    const lines = targets
-      .map((c, i) => `${i + 1}. ${c.name || "—"} | ${c.phone || "—"}`)
-      .join("\n");
+   const lines = targets
+  .map((c) => c.phone || "—")
+  .join("\n");
     navigator.clipboard.writeText(lines).then(() => {
       setCopied(mode);
       setTimeout(() => setCopied(false), 2200);
