@@ -89,8 +89,11 @@ function ClientsPhoneBook() {
     } else {
       targets = previewClients;
     }
-   const lines = targets
-  .map((c) => c.phone || "—")
+ const toEnglishNumbers = (str) =>
+  (str || "").replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d).toString());
+
+const lines = targets
+  .map((c) => toEnglishNumbers(c.phone || "—"))
   .join("\n");
     navigator.clipboard.writeText(lines).then(() => {
       setCopied(mode);
