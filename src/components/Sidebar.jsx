@@ -8,26 +8,25 @@ import {
   FaClipboardList,
   FaBoxOpen,
   FaUserShield,
+  FaAddressBook,
 } from "react-icons/fa";
 
 function Sidebar({ open, setOpen }) {
-  const location = useLocation(); // لمعرفة الصفحة الحالية وتمييز الرابط النشط
-  
-  // التأكد من أننا نستخدم "userData" هنا
+  const location = useLocation();
+
   const userData = JSON.parse(localStorage.getItem("userData")) || {};
   const isAdmin = userData?.role === "super_admin";
   const permissions = userData?.permissions || [];
 
-  // الروابط كلها مع key للصلاحيات
   const allLinks = [
     { to: "/dashboard", key: "dashboard", icon: <FaHome size={18} />, label: "الرئيسية" },
     { to: "/clients", key: "clients", icon: <FaUsers size={18} />, label: "العملاء" },
+    { to: "/clients-phonebook", key: "clients", icon: <FaAddressBook size={18} />, label: "دفتر الأرقام" },
     { to: "/profits", key: "profits", icon: <FaChartLine size={18} />, label: "الأرباح" },
     { to: "/orders", key: "orders", icon: <FaClipboardList size={18} />, label: "الطلبات" },
     { to: "/products", key: "products", icon: <FaBoxOpen size={18} />, label: "المخزون" },
   ];
 
-  // فلترة الروابط حسب الصلاحيات
   const allowedLinks = isAdmin
     ? allLinks
     : allLinks.filter(link => permissions.includes(link.key));
@@ -36,7 +35,6 @@ function Sidebar({ open, setOpen }) {
     <div
       className={`
         fixed top-[57px] left-0 h-[calc(100vh-57px)]
-        /* التعديل هنا: ألوان الوضع الفاتح والليلي مع تأثير انتقال ناعم */
         bg-[#f5f5dc] dark:bg-gray-900 text-black dark:text-gray-200 
         shadow-md dark:shadow-none dark:border-r dark:border-gray-800
         transition-all duration-300 z-[1040]
@@ -52,8 +50,6 @@ function Sidebar({ open, setOpen }) {
           <h3 className={`font-black text-gray-800 dark:text-white tracking-wide transition-all ${open ? "block" : "hidden md:block"}`}>
             لوحة التحكم
           </h3>
-
-          {/* زر الموبايل */}
           <button
             className="md:hidden p-1.5 rounded-lg bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
             onClick={() => setOpen(!open)}
@@ -65,15 +61,17 @@ function Sidebar({ open, setOpen }) {
         {/* Links */}
         <ul className="flex flex-col px-3 gap-1">
           {allowedLinks.map((item, idx) => {
-            const isActive = location.pathname === item.to || (item.to === "/dashboard" && location.pathname === "/");
+            const isActive =
+              location.pathname === item.to ||
+              (item.to === "/dashboard" && location.pathname === "/");
             return (
               <li key={idx}>
                 <Link
                   to={item.to}
                   className={`
                     flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-bold text-sm
-                    ${isActive 
-                      ? "bg-blue-600 text-white shadow-md dark:shadow-none" 
+                    ${isActive
+                      ? "bg-blue-600 text-white shadow-md dark:shadow-none"
                       : "hover:bg-black/5 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-400 dark:hover:text-white"
                     }
                   `}
