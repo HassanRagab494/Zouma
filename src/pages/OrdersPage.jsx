@@ -178,22 +178,37 @@ function OrdersPage() {
     } catch (err) { alert("خطأ في حذف الفاتورة"); }
   };
 
-const updateStatusQuickly = async (clientId, orderIndex, newStatus) => {
-  try {
-    const client = clients.find((c) => c.id === clientId);
-    const updated = [...client.orders];
-    updated[orderIndex].status = newStatus;
+  const updateStatusQuickly = async (clientId, orderIndex, newStatus) => {
+    try {
+      const client = clients.find((c) => c.id === clientId);
+      const updated = [...client.orders];
+      const order = updated[orderIndex];
+      const wasDelivered = order.status === "DELIVERED";
+      const becomingDelivered = newStatus === "DELIVERED";
 
-    // ✅ لو تم الاستلام، اعتبر المبلغ كله اتحصل
-    if (newStatus === "DELIVERED") {
-      updated[orderIndex].paidAmount = updated[orderIndex].total;
-    }
+      updated[orderIndex] = { ...order, status: newStatus };
 
-    await updateDoc(doc(db, "clients", clientId), { orders: updated });
-    fetchClients();
-    showSuccess("تم تحديث حالة الأوردر");
-  } catch { alert("خطأ في التحديث"); }
-};
+      // ✅ لو بيبقى DELIVERED → اعتبر المبلغ كله اتحصل واحفظ الـ paidAmount الأصلي
+      if (becomingDelivered && !wasDelivered) {
+        updated[orderIndex]._originalPaidAmount = order.paidAmount;
+        updated[orderIndex].paidAmount = order.total;
+      }
+
+      // ✅ لو راجع من DELIVERED لأي حالة تانية → رجّع المبلغ الأصلي
+      if (wasDelivered && !becomingDelivered) {
+        const originalPaid = order._originalPaidAmount !== undefined
+          ? order._originalPaidAmount
+          : order.paidAmount;
+        updated[orderIndex].paidAmount = originalPaid;
+        delete updated[orderIndex]._originalPaidAmount;
+      }
+
+      await updateDoc(doc(db, "clients", clientId), { orders: updated });
+      fetchClients();
+      showSuccess("تم تحديث حالة الأوردر");
+    } catch { alert("خطأ في التحديث"); }
+  };
+
   /* ─── processed clients ─── */
   const processedClients = useMemo(() => {
     let filtered = clients.filter(
