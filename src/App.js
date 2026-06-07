@@ -18,7 +18,7 @@ import Dashboard from "./pages/Dashboard";
 import ProductsPage from "./pages/ProductsPage";
 import UsersAdminPage from "./pages/UsersAdminPage";
 import ClientsPhoneBook from "./pages/ClientsPhoneBook";
-
+import RestorePage from "./pages/RestorePage";
 
 import Login from "./pages/Login";
 
@@ -93,6 +93,7 @@ function App() {
           <Route path="/orders" element={<ProtectedRoute element={OrdersPage} permission="orders" isAuthenticated={isAuthenticated} currentUser={currentUser} />} />
           <Route path="/products" element={<ProtectedRoute element={ProductsPage} permission="products" isAuthenticated={isAuthenticated} currentUser={currentUser} />} />
           <Route path="/users-admin" element={<ProtectedRoute element={UsersAdminPage} permission="users-admin" isAuthenticated={isAuthenticated} currentUser={currentUser} />} />
+          <Route path="/restore" element={<ProtectedRoute element={RestorePage} permission="dashboard" isAuthenticated={isAuthenticated} currentUser={currentUser} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </LayoutWrapper>

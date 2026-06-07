@@ -9,6 +9,7 @@ import {
   FaBoxOpen,
   FaUserShield,
   FaAddressBook,
+  FaCloudDownloadAlt,
 } from "react-icons/fa";
 
 function Sidebar({ open, setOpen }) {
@@ -87,27 +88,49 @@ function Sidebar({ open, setOpen }) {
             );
           })}
 
-          {/* صفحة إدارة المستخدمين للأدمن فقط */}
+          {/* للأدمن فقط */}
           {isAdmin && (
-            <li className="mt-4 pt-4 border-t border-gray-300 dark:border-gray-800">
-              <Link
-                to="/users-admin"
-                className={`
-                  flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-bold text-sm
-                  ${location.pathname === "/users-admin"
-                    ? "bg-purple-600 text-white shadow-md"
-                    : "hover:bg-black/5 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-400 dark:hover:text-white"
-                  }
-                `}
-              >
-                <span className={`${location.pathname === "/users-admin" ? "text-white" : "text-purple-500"}`}>
-                  <FaUserShield size={18} />
-                </span>
-                <span className={`${open ? "inline" : "hidden md:inline"}`}>
-                  إدارة المستخدمين
-                </span>
-              </Link>
-            </li>
+            <>
+              <li className="mt-4 pt-4 border-t border-gray-300 dark:border-gray-800">
+                <Link
+                  to="/users-admin"
+                  className={`
+                    flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-bold text-sm
+                    ${location.pathname === "/users-admin"
+                      ? "bg-purple-600 text-white shadow-md"
+                      : "hover:bg-black/5 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-400 dark:hover:text-white"
+                    }
+                  `}
+                >
+                  <span className={`${location.pathname === "/users-admin" ? "text-white" : "text-purple-500"}`}>
+                    <FaUserShield size={18} />
+                  </span>
+                  <span className={`${open ? "inline" : "hidden md:inline"}`}>
+                    إدارة المستخدمين
+                  </span>
+                </Link>
+              </li>
+
+              <li>
+                <Link
+                  to="/restore"
+                  className={`
+                    flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-bold text-sm
+                    ${location.pathname === "/restore"
+                      ? "bg-amber-500 text-white shadow-md"
+                      : "hover:bg-black/5 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-400 dark:hover:text-white"
+                    }
+                  `}
+                >
+                  <span className={`${location.pathname === "/restore" ? "text-white" : "text-amber-500"}`}>
+                    <FaCloudDownloadAlt size={18} />
+                  </span>
+                  <span className={`${open ? "inline" : "hidden md:inline"}`}>
+                    استرجاع البيانات
+                  </span>
+                </Link>
+              </li>
+            </>
           )}
         </ul>
       </div>

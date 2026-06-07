@@ -146,6 +146,15 @@ function ProductsPage() {
 
   const lowStockCount = products.filter(p => p.stock <= 2).length;
 
+  // ── حسابات ملخص المخزون ──
+  const totalWholesale = products.reduce(
+    (sum, p) => sum + (parseFloat(p.wholesalePrice) || 0) * (parseInt(p.stock) || 0), 0
+  );
+  const totalSelling = products.reduce(
+    (sum, p) => sum + (parseFloat(p.sellingPrice) || 0) * (parseInt(p.stock) || 0), 0
+  );
+  const expectedProfit = totalSelling - totalWholesale;
+
   if (loading) return (
     <div className="flex flex-col justify-center items-center h-[calc(100vh-100px)] transition-colors duration-300">
         <div className="w-12 h-12 border-4 border-blue-200 dark:border-gray-700 border-t-blue-600 dark:border-t-blue-500 rounded-full animate-spin mb-4"></div>
@@ -175,6 +184,25 @@ function ProductsPage() {
             </div>
         </div>
       )}
+
+      {/* ── بانر ملخص المخزون ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 border-r-4 border-r-orange-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1 transition-all duration-300">
+          <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-gray-500 mb-1">إجمالي البضاعة بالجملة</p>
+          <p className="text-xl font-black text-orange-600 dark:text-orange-400">{totalWholesale.toLocaleString()} <span className="text-sm">ج</span></p>
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold mt-1">يعني البضاعة دي كلفتك</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 border-r-4 border-r-green-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1 transition-all duration-300">
+          <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-gray-500 mb-1">لو بعتها كلها بسعر البيع</p>
+          <p className="text-xl font-black text-green-600 dark:text-green-400">{totalSelling.toLocaleString()} <span className="text-sm">ج</span></p>
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold mt-1">الإيراد المتوقع لو باعت كل حاجة</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 border-r-4 border-r-blue-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1 transition-all duration-300">
+          <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-gray-500 mb-1">الربح المتوقع</p>
+          <p className="text-xl font-black text-blue-600 dark:text-blue-400">{expectedProfit.toLocaleString()} <span className="text-sm">ج</span></p>
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold mt-1">سعر البيع − سعر الجملة</p>
+        </div>
+      </div>
 
       <div className="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 mb-6 transition-colors duration-300">
           <input 
