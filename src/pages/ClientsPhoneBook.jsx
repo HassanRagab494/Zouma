@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 
 function ClientsPhoneBook() {
@@ -13,21 +13,25 @@ function ClientsPhoneBook() {
   const [selected, setSelected] = useState(new Set());
   const [selectMode, setSelectMode] = useState(false);
 
-  const fetchClients = useCallback(async () => {
+  useEffect(() => {
     setLoading(true);
-    try {
-      const q = query(collection(db, "clients"), orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(q);
-      const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setClients(list);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    const q = query(collection(db, "clients"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list = snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((item) => !item.isDeleted);
+        setClients(list);
+        setLoading(false);
+      },
+      (err) => {
+        setError(err.message);
+        setLoading(false);
+      }
+    );
+    return () => unsubscribe();
   }, []);
-
-  useEffect(() => { fetchClients(); }, [fetchClients]);
 
   /* ---- helpers ---- */
   const getTotal = (orders) =>
