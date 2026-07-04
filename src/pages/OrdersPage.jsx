@@ -145,7 +145,7 @@ function OrdersPage() {
   };
 
   const deleteClient = async (clientId, clientName) => {
-    if (!window.confirm(`Ù‡Ù„ Ø£Ù†Øª Ù…ØªØ£ÙƒØ¯ Ù…Ù† Ø­Ø°Ù Ø§Ù„Ø¹Ù…ÙŠÙ„ "${clientName}"ØŸ`)) return;
+    if (!window.confirm(`هل أنت متأكد من حذف العميل "${clientName}"؟`)) return;
     try {
       const ref = doc(db, "clients", clientId);
       const existingSnap = await getDoc(ref);
@@ -159,7 +159,7 @@ function OrdersPage() {
         isSynced: true,
         lastSyncedAt: deletedAt,
       }, { merge: true });
-    } catch (err) { alert("Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ø­Ø°Ù"); }
+    } catch (err) { alert("خطأ في الحذف"); }
   };
 
   /* order actions */
@@ -167,7 +167,7 @@ function OrdersPage() {
     setCurrentClientId(clientId);
     setModalOrder(orderIndex !== null ? { ...order, index: orderIndex } : null);
     if (order) {
-      const formattedItems = (order.items || [{ productId: "", name: "Ø£ÙˆØ±Ø¯Ø±", price: order.total, qty: 1 }])
+      const formattedItems = (order.items || [{ productId: "", name: "أوردر", price: order.total, qty: 1 }])
         .map((i) => ({ ...i, searchQuery: i.name || "", showDropdown: false }));
       setOrderForm({ ...order, paidAmount: order.paidAmount || 0, items: formattedItems, status: order.status || "NEW", date: order.date || new Date().toISOString().split("T")[0], notes: order.notes || "" });
     } else {
@@ -226,7 +226,7 @@ function OrdersPage() {
   };
 
   const deleteOrder = async (clientId, orderIndex) => {
-    if (!window.confirm("Ø­Ø°Ù Ø§Ù„ÙØ§ØªÙˆØ±Ø©ØŸ (Ø³ÙŠØªÙ… Ø¥Ø±Ø¬Ø§Ø¹ Ø§Ù„Ø¨Ø¶Ø§Ø¹Ø© Ù„Ù„Ù…Ø®Ø²ÙˆÙ† ØªÙ„Ù‚Ø§Ø¦ÙŠØ§Ù‹ Ø¥Ø°Ø§ Ù„Ù… ÙŠØªÙ… ØªØ³Ù„ÙŠÙ…Ù‡Ø§)")) return;
+    if (!window.confirm("حذف الفاتورة؟ (سيتم إرجاع البضاعة للمخزون تلقائياً إذا لم يتم تسليمها)")) return;
     try {
       const clientRef   = doc(db, "clients", clientId);
       const client      = clients.find((c) => c.id === clientId);
@@ -262,7 +262,7 @@ function OrdersPage() {
         isSynced: true,
         lastSyncedAt: now,
       }, { merge: true });
-    } catch (err) { alert("Ø®Ø·Ø£ ÙÙŠ Ø­Ø°Ù Ø§Ù„ÙØ§ØªÙˆØ±Ø©"); }
+    } catch (err) { alert("خطأ في حذف الفاتورة"); }
   };
 
   const updateStatusQuickly = async (clientId, orderIndex, newStatus) => {
@@ -301,8 +301,8 @@ function OrdersPage() {
         isSynced: true,
         lastSyncedAt: now,
       }, { merge: true });
-      showSuccess("ØªÙ… ØªØ­Ø¯ÙŠØ« Ø­Ø§Ù„Ø© Ø§Ù„Ø£ÙˆØ±Ø¯Ø±");
-    } catch { alert("Ø®Ø·Ø£ ÙÙŠ Ø§Ù„ØªØ­Ø¯ÙŠØ«"); }
+      showSuccess("تم تحديث حالة الأوردر");
+    } catch { alert("خطأ في التحديث"); }
   };
 
   /* processed clients */
@@ -339,7 +339,7 @@ function OrdersPage() {
     return (
       <div className="flex flex-col justify-center items-center h-[calc(100vh-100px)] transition-colors duration-300">
         <div className="w-12 h-12 border-4 border-blue-200 dark:border-gray-700 border-t-blue-600 dark:border-t-blue-500 rounded-full animate-spin mb-4" />
-        <p className="text-xl font-bold animate-pulse text-blue-600 dark:text-blue-400">Ø¬Ø§Ø±Ù Ø¬Ù„Ø¨ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª...</p>
+        <p className="text-xl font-bold animate-pulse text-blue-600 dark:text-blue-400">جارٍ جلب البيانات...</p>
       </div>
     );
 
@@ -359,11 +359,11 @@ function OrdersPage() {
         </div>
       )}
 
-      {/* ÙƒØ±ÙˆØª Ø§Ù„Ø¹Ù…Ù„Ø§Ø¡ */}
+      {/* كروت العملاء */}
       <div className="grid gap-6">
         {processedClients.length === 0 ? (
           <div className="text-center text-gray-400 dark:text-gray-500 mt-10 font-bold bg-white dark:bg-gray-800 p-8 rounded-2xl border border-dashed dark:border-gray-700">
-            Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¨ÙŠØ§Ù†Ø§Øª Ù…Ø·Ø§Ø¨Ù‚Ø© Ù„Ù„Ø¨Ø­Ø«
+            لا توجد بيانات مطابقة للبحث
           </div>
         ) : (
           processedClients.map((client) => (
@@ -387,7 +387,7 @@ function OrdersPage() {
         )}
       </div>
 
-      {/* Ø§Ù„Ù…ÙˆØ¯Ø§Ù„Ø§Øª */}
+      {/* المودالات */}
       <ClientModal
         show={showClientModal}
         onClose={() => setShowClientModal(false)}
