@@ -94,10 +94,10 @@ function ClientsPhoneBook() {
       targets = previewClients;
     }
  const toEnglishNumbers = (str) =>
-  (str || "").replace(/[Ù -Ù©]/g, (d) => "Ù Ù¡Ù¢Ù£Ù¤Ù¥Ù¦Ù§Ù¨Ù©".indexOf(d).toString());
+  (str || "").replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d).toString());
 
 const lines = targets
-  .map((c) => toEnglishNumbers(c.phone || "â€”"))
+  .map((c) => toEnglishNumbers(c.phone || "—"))
   .join("\n");
     navigator.clipboard.writeText(lines).then(() => {
       setCopied(mode);
@@ -110,14 +110,14 @@ const lines = targets
     return (
       <div className="flex flex-col items-center justify-center h-60 gap-3" dir="rtl">
         <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-        <p className="text-blue-600 dark:text-blue-400 font-bold animate-pulse">Ø¬Ø§Ø±Ù Ø§Ù„ØªØ­Ù…ÙŠÙ„...</p>
+        <p className="text-blue-600 dark:text-blue-400 font-bold animate-pulse">جارٍ التحميل...</p>
       </div>
     );
 
   if (error)
     return (
       <p className="text-center text-red-600 font-bold bg-red-50 p-4 rounded-xl mt-8" dir="rtl">
-        Ø®Ø·Ø£: {error}
+        خطأ: {error}
       </p>
     );
 
@@ -128,8 +128,8 @@ const lines = targets
 
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-black text-gray-800 dark:text-white">Ø¯ÙØªØ± Ø£Ø±Ù‚Ø§Ù… Ø§Ù„Ø¹Ù…Ù„Ø§Ø¡ ðŸ“‹</h1>
-        <p className="text-sm text-gray-400 dark:text-gray-500 mt-1 font-bold">{clients.length} Ø¹Ù…ÙŠÙ„ Ù…Ø³Ø¬Ù„</p>
+        <h1 className="text-2xl font-black text-gray-800 dark:text-white">دفتر أرقام العملاء 📋</h1>
+        <p className="text-sm text-gray-400 dark:text-gray-500 mt-1 font-bold">{clients.length} عميل مسجل</p>
       </div>
 
       {/* Controls */}
@@ -139,7 +139,7 @@ const lines = targets
         <input
           type="text"
           className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:border-blue-500 outline-none transition text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 font-bold text-sm"
-          placeholder="Ø§Ø¨Ø­Ø« Ø¨Ø§Ù„Ø§Ø³Ù… Ø£Ùˆ Ø§Ù„Ø±Ù‚Ù…..."
+          placeholder="ابحث بالاسم أو الرقم..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -148,12 +148,12 @@ const lines = targets
         <div className="flex flex-wrap gap-3 items-center justify-between">
           {/* Sort */}
           <div className="flex items-center gap-2">
-            <span className="text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">ØªØ±ØªÙŠØ¨:</span>
+            <span className="text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">ترتيب:</span>
             <div className="flex gap-1.5">
               {[
-                { value: "latest", label: "Ø§Ù„Ø£Ø­Ø¯Ø«" },
-                { value: "topBuyer", label: "Ø§Ù„Ø£ÙƒØ«Ø± Ø´Ø±Ø§Ø¡Ù‹" },
-                { value: "lastOrder", label: "Ø¢Ø®Ø± Ø·Ù„Ø¨" },
+                { value: "latest", label: "الأحدث" },
+                { value: "topBuyer", label: "الأكثر شراءً" },
+                { value: "lastOrder", label: "آخر طلب" },
               ].map((opt) => (
                 <button
                   key={opt.value}
@@ -172,7 +172,7 @@ const lines = targets
 
           {/* Copy count */}
           <div className="flex items-center gap-2">
-            <span className="text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ø¹Ø±Ø¶:</span>
+            <span className="text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">عرض:</span>
             <div className="flex gap-1.5">
               {["50", "100", "all"].map((opt) => (
                 <button
@@ -184,7 +184,7 @@ const lines = targets
                       : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
                   }`}
                 >
-                  {opt === "all" ? "Ø§Ù„ÙƒÙ„" : opt}
+                  {opt === "all" ? "الكل" : opt}
                 </button>
               ))}
             </div>
@@ -193,7 +193,7 @@ const lines = targets
 
         {/* Action buttons */}
         <div className="flex gap-2 flex-wrap">
-          {/* ØªÙØ¹ÙŠÙ„ ÙˆØ¶Ø¹ Ø§Ù„ØªØ­Ø¯ÙŠØ¯ */}
+          {/* تفعيل وضع التحديد */}
           <button
             onClick={() => { setSelectMode(!selectMode); setSelected(new Set()); }}
             className={`flex-1 py-2.5 rounded-xl font-black text-sm transition-all border ${
@@ -202,10 +202,10 @@ const lines = targets
                 : "bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
             }`}
           >
-            {selectMode ? "âœ– Ø¥Ù„ØºØ§Ø¡ Ø§Ù„ØªØ­Ø¯ÙŠØ¯" : "â˜‘ ØªØ­Ø¯ÙŠØ¯ ÙŠØ¯ÙˆÙŠ"}
+            {selectMode ? "✖ إلغاء التحديد" : "☑ تحديد يدوي"}
           </button>
 
-          {/* Ù†Ø³Ø® Ø§Ù„ÙƒÙ„ */}
+          {/* نسخ الكل */}
           <button
             onClick={() => handleCopy("all")}
             className={`flex-1 py-2.5 rounded-xl font-black text-sm transition-all shadow-sm ${
@@ -215,11 +215,11 @@ const lines = targets
             }`}
           >
             {copied === "all"
-              ? `âœ… ØªÙ… Ø§Ù„Ù†Ø³Ø®!`
-              : `ðŸ“‹ Ù†Ø³Ø® Ø§Ù„ÙƒÙ„ (${previewClients.length})`}
+              ? `✅ تم النسخ!`
+              : `📋 نسخ الكل (${previewClients.length})`}
           </button>
 
-          {/* Ù†Ø³Ø® Ø§Ù„Ù…Ø­Ø¯Ø¯ */}
+          {/* نسخ المحدد */}
           {selectMode && (
             <button
               onClick={() => handleCopy("selected")}
@@ -233,8 +233,8 @@ const lines = targets
               }`}
             >
               {copied === "selected"
-                ? `âœ… ØªÙ… Ø§Ù„Ù†Ø³Ø®!`
-                : `ðŸ“Œ Ù†Ø³Ø® Ø§Ù„Ù…Ø­Ø¯Ø¯ (${selected.size})`}
+                ? `✅ تم النسخ!`
+                : `📌 نسخ المحدد (${selected.size})`}
             </button>
           )}
         </div>
@@ -242,10 +242,10 @@ const lines = targets
 
       {/* Summary strip */}
       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 rounded-2xl p-3 mb-4 flex flex-wrap gap-4 text-sm font-bold text-blue-700 dark:text-blue-300">
-        <span>ðŸ“Š ÙŠÙØ¹Ø±Ø¶: <strong>{previewClients.length}</strong> Ø¹Ù…ÙŠÙ„</span>
-        <span>ðŸ’° Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„ÙƒÙ„: <strong>{clients.reduce((s, c) => s + getTotal(c.orders), 0).toLocaleString()} Ø¬</strong></span>
+        <span>📊 يُعرض: <strong>{previewClients.length}</strong> عميل</span>
+        <span>💰 إجمالي الكل: <strong>{clients.reduce((s, c) => s + getTotal(c.orders), 0).toLocaleString()} ج</strong></span>
         {selectMode && selected.size > 0 && (
-          <span>â˜‘ Ù…Ø­Ø¯Ø¯: <strong className="text-purple-600 dark:text-purple-400">{selected.size}</strong></span>
+          <span>☑ محدد: <strong className="text-purple-600 dark:text-purple-400">{selected.size}</strong></span>
         )}
       </div>
 
@@ -259,7 +259,7 @@ const lines = targets
             className="w-4 h-4 accent-orange-500 cursor-pointer"
           />
           <span className="text-sm font-black text-orange-700 dark:text-orange-400">
-            {allSelectedInView ? "Ø¥Ù„ØºØ§Ø¡ ØªØ­Ø¯ÙŠØ¯ Ø§Ù„ÙƒÙ„" : `ØªØ­Ø¯ÙŠØ¯ Ø§Ù„ÙƒÙ„ (${previewClients.length})`}
+            {allSelectedInView ? "إلغاء تحديد الكل" : `تحديد الكل (${previewClients.length})`}
           </span>
         </div>
       )}
@@ -305,7 +305,7 @@ const lines = targets
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-black text-gray-800 dark:text-white text-sm truncate">
-                      {client.name || "â€”"}
+                      {client.name || "—"}
                     </span>
                     {client.code && (
                       <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-500 dark:text-blue-400 text-[9px] font-black px-1.5 py-0.5 rounded border border-blue-100 dark:border-blue-800/40 shrink-0">
@@ -314,14 +314,14 @@ const lines = targets
                     )}
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 font-bold font-sans mt-0.5">
-                    {client.phone || "â€”"}
+                    {client.phone || "—"}
                   </p>
 
                   {/* Last order */}
                   {lastOrder ? (
                     <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
                       <span className="text-[10px] bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-800/30 px-2 py-0.5 rounded-lg font-black">
-                        ðŸ•’ Ø¢Ø®Ø± Ø·Ù„Ø¨: {lastOrder.date || "â€”"}
+                        🕒 آخر طلب: {lastOrder.date || "—"}
                       </span>
                       {lastOrder.items && (
                         <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold truncate max-w-[160px]">
@@ -330,17 +330,17 @@ const lines = targets
                       )}
                     </div>
                   ) : (
-                    <span className="text-[10px] text-gray-300 dark:text-gray-600 font-bold mt-1 block">Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ø·Ù„Ø¨Ø§Øª</span>
+                    <span className="text-[10px] text-gray-300 dark:text-gray-600 font-bold mt-1 block">لا يوجد طلبات</span>
                   )}
                 </div>
 
                 {/* Stats */}
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <span className="text-xs font-black text-green-600 dark:text-green-400">
-                    {total.toLocaleString()} Ø¬
+                    {total.toLocaleString()} ج
                   </span>
                   <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold">
-                    {ordersCount} Ø£ÙˆØ±Ø¯Ø±
+                    {ordersCount} أوردر
                   </span>
                 </div>
               </div>
@@ -348,14 +348,14 @@ const lines = targets
           })
         ) : (
           <div className="text-center text-gray-400 dark:text-gray-500 py-10 font-bold bg-white dark:bg-gray-800 rounded-2xl border border-dashed dark:border-gray-700">
-            ðŸ” Ù„Ø§ ØªÙˆØ¬Ø¯ Ù†ØªØ§Ø¦Ø¬ Ù…Ø·Ø§Ø¨Ù‚Ø©
+            🔍 لا توجد نتائج مطابقة
           </div>
         )}
       </div>
 
       {filteredClients.length > displayLimit && (
         <p className="text-center text-xs text-gray-400 dark:text-gray-600 mt-4 font-bold">
-          ÙŠÙØ¹Ø±Ø¶ {displayLimit} Ù…Ù† Ø£ØµÙ„ {filteredClients.length} â€” ØºÙŠÙ‘Ø± Ø§Ù„Ø¹Ø±Ø¶ Ù„Ø±Ø¤ÙŠØ© Ø§Ù„Ù…Ø²ÙŠØ¯
+          يُعرض {displayLimit} من أصل {filteredClients.length} — غيّر العرض لرؤية المزيد
         </p>
       )}
     </div>
