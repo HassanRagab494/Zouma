@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, orderBy } from "firebase/firestore";
+import { collection, doc, addDoc, setDoc, getDoc, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 
+// مكون الموديول الأساسي (تم تحديثه للدارك مود)
 const TailwindModal = ({ show, onClose, title, children, footer }) => {
     if (!show) return null;
     return (
@@ -27,7 +28,9 @@ function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  
   const [searchTerm, setSearchTerm] = useState("");
+
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [duplicateProduct, setDuplicateProduct] = useState(null);
 
@@ -39,36 +42,72 @@ function ProductsPage() {
     stock: "",
   });
 
-  const fetchProducts = async () => {
-    setLoading(true);
-    try {
-      const q = query(collection(db, "products"), orderBy("serial", "asc"));
-      const querySnapshot = await getDocs(q);
-      setProducts(querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-    } catch (err) {
-      console.error("Error fetching products:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // جديد: استماع لحظي (onSnapshot) بدل القراءة لمرة واحدة (getDocs).
+  // ده بيخلي أي تغيير في Firebase (من الديسكتوب أو من مستخدم ويب تاني)
+  // يظهر هنا فورًا من غير ما تحتاج تعمل Refresh للصفحة.
+  // كمان بنستبعد أي منتج isDeleted:true عشان المنتجات المحذوفة
+  // متفضلش ظاهرة غلط.
+  useEffect(() => {
+    const q = query(collection(db, "products"), orderBy("serial", "asc"));
 
-  useEffect(() => { fetchProducts(); }, []);
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        const list = querySnapshot.docs
+          .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+          .filter((item) => !item.isDeleted);
+
+        setProducts(list);
+        setLoading(false);
+      },
+      (err) => {
+        console.error("Error listening to products:", err);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   const executeSave = async (idToUpdate) => {
     try {
+      const now = new Date().toISOString();
       const productData = {
         serial: Number(productForm.serial),
         name: productForm.name,
         wholesalePrice: Number(productForm.wholesalePrice),
         sellingPrice: Number(productForm.sellingPrice),
-        stock: Number(productForm.stock),
+        stock: Number(productForm.stock), 
       };
+
       if (idToUpdate) {
-        await updateDoc(doc(db, "products", idToUpdate), productData);
+        const ref = doc(db, "products", idToUpdate);
+        const existingSnap = await getDoc(ref);
+        const existing = existingSnap.exists() ? existingSnap.data() : {};
+
+        await setDoc(ref, {
+          ...productData,
+          updatedAt: now,
+          version: Number(existing.version || 0) + 1,
+          isDeleted: false,
+          deletedAt: null,
+          isSynced: true,
+          lastSyncedAt: now,
+        }, { merge: true });
       } else {
-        await addDoc(collection(db, "products"), productData);
+        await addDoc(collection(db, "products"), {
+          ...productData,
+          createdAt: now,
+          updatedAt: now,
+          version: 1,
+          isDeleted: false,
+          deletedAt: null,
+          isSynced: true,
+          lastSyncedAt: now,
+        });
       }
-      closeAllAndRefresh();
+      
+      closeAll();
     } catch (err) {
       alert("حدث خطأ أثناء الحفظ: " + err.message);
     }
@@ -76,46 +115,80 @@ function ProductsPage() {
 
   const handleUpdateDuplicate = async () => {
     try {
+      const now = new Date().toISOString();
       const combinedStock = Number(duplicateProduct.stock) + Number(productForm.stock);
+
+      const ref = doc(db, "products", duplicateProduct.id);
+      const existingSnap = await getDoc(ref);
+      const existing = existingSnap.exists() ? existingSnap.data() : {};
+
       const updatedData = {
-        serial: Number(duplicateProduct.serial),
+        serial: Number(duplicateProduct.serial), 
         name: productForm.name,
-        wholesalePrice: Number(productForm.wholesalePrice),
+        wholesalePrice: Number(productForm.wholesalePrice), 
         sellingPrice: Number(productForm.sellingPrice),
         stock: combinedStock,
+        updatedAt: now,
+        version: Number(existing.version || 0) + 1,
+        isDeleted: false,
+        deletedAt: null,
+        isSynced: true,
+        lastSyncedAt: now,
       };
-      await updateDoc(doc(db, "products", duplicateProduct.id), updatedData);
-      closeAllAndRefresh();
+
+      await setDoc(ref, updatedData, { merge: true });
+      closeAll();
     } catch (err) {
       alert("حدث خطأ أثناء التحديث: " + err.message);
     }
   };
 
-  const closeAllAndRefresh = () => {
+  const closeAll = () => {
     setShowModal(false);
     setShowDuplicateModal(false);
     setProductForm({ serial: "", name: "", wholesalePrice: "", sellingPrice: "", stock: "" });
     setEditingId(null);
     setDuplicateProduct(null);
-    fetchProducts();
+    // ملحوظة: مفيش داعي لإعادة تحميل القائمة يدويًا هنا،
+    // لأن onSnapshot هيستقبل التغيير ويحدّث القائمة تلقائيًا.
   };
 
   const saveProduct = async () => {
     const existingProduct = products.find(
       (p) => p.name.trim() === productForm.name.trim()
     );
+
     if (existingProduct && existingProduct.id !== editingId) {
       setDuplicateProduct(existingProduct);
-      setShowDuplicateModal(true);
-      return;
+      setShowDuplicateModal(true); 
+      return; 
     }
     await executeSave(editingId);
   };
 
+  // جديد: حذف "ناعم" (Soft Delete) بدل الحذف النهائي.
+  // بنفس طريقة الديسكتوب بالظبط: بنحط isDeleted:true بدل ما نمسح
+  // المستند. المنتج هيختفي فورًا من الويب والديسكتوب مع بعض،
+  // ومش هيرجع تاني إلا لو حد استخدم ميزة الاسترجاع بنفسه من الديسكتوب.
   const deleteProduct = async (id, name) => {
     if (window.confirm(`هل أنت متأكد من حذف المنتج "${name}"؟`)) {
-      await deleteDoc(doc(db, "products", id));
-      fetchProducts();
+      try {
+        const ref = doc(db, "products", id);
+        const existingSnap = await getDoc(ref);
+        const existing = existingSnap.exists() ? existingSnap.data() : {};
+        const deletedAt = new Date().toISOString();
+
+        await setDoc(ref, {
+          isDeleted: true,
+          deletedAt,
+          updatedAt: deletedAt,
+          version: Number(existing.version || 0) + 1,
+          isSynced: true,
+          lastSyncedAt: deletedAt,
+        }, { merge: true });
+      } catch (err) {
+        alert("حدث خطأ أثناء الحذف: " + err.message);
+      }
     }
   };
 
@@ -131,8 +204,8 @@ function ProductsPage() {
     setShowModal(true);
   };
 
-  const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const filteredProducts = products.filter(p => 
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     p.serial.toString().includes(searchTerm)
   );
 
@@ -149,31 +222,31 @@ function ProductsPage() {
 
   if (loading) return (
     <div className="flex flex-col justify-center items-center h-[calc(100vh-100px)] transition-colors duration-300">
-      <div className="w-12 h-12 border-4 border-blue-200 dark:border-gray-700 border-t-blue-600 dark:border-t-blue-500 rounded-full animate-spin mb-4"></div>
-      <p className="text-xl font-bold animate-pulse text-blue-600 dark:text-blue-400">جارٍ جرد المخزون...</p>
+        <div className="w-12 h-12 border-4 border-blue-200 dark:border-gray-700 border-t-blue-600 dark:border-t-blue-500 rounded-full animate-spin mb-4"></div>
+        <p className="text-xl font-bold animate-pulse text-blue-600 dark:text-blue-400">جارٍ جرد المخزون...</p>
     </div>
   );
 
   return (
     <div className="p-4 md:p-8 min-h-screen transition-colors duration-300 bg-gray-50/50 dark:bg-gray-900 text-right" dir="rtl">
-
+      
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 mt-2">
-        <div>
-          <h1 className="text-3xl font-black text-gray-800 dark:text-white tracking-tight">المخزون <span className="text-blue-600 dark:text-blue-500">والبضاعة</span></h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 font-bold mt-1">إدارة المنتجات والتسعير</p>
-        </div>
-        <button onClick={() => openModal()} className="bg-blue-600 dark:bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-blue-500/30 text-sm hover:bg-blue-700 transition-all whitespace-nowrap">
-          + إضافة منتج جديد
-        </button>
+          <div>
+            <h1 className="text-3xl font-black text-gray-800 dark:text-white tracking-tight">المخزون <span className="text-blue-600 dark:text-blue-500">والبضاعة</span></h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 font-bold mt-1">إدارة المنتجات والتسعير</p>
+          </div>
+          <button onClick={() => openModal()} className="bg-blue-600 dark:bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-blue-500/30 text-sm hover:bg-blue-700 transition-all whitespace-nowrap">
+            + إضافة منتج جديد
+          </button>
       </div>
 
       {lowStockCount > 0 && (
         <div className="bg-red-50 dark:bg-red-900/20 border-r-4 border-red-500 dark:border-red-500 text-red-700 dark:text-red-400 p-4 rounded-2xl mb-8 shadow-sm flex items-center gap-4 transition-colors duration-300">
-          <span className="text-3xl animate-bounce">⚠️</span>
-          <div>
-            <p className="font-black text-lg mb-1">تنبيه هام بالنواقص!</p>
-            <p className="text-sm font-bold">يوجد عدد <span className="font-black text-lg bg-red-200 dark:bg-red-800/50 text-red-900 dark:text-white px-2 py-0.5 rounded-md mx-1">{lowStockCount}</span> منتجات وصل مخزونها إلى 2 أو أقل، يرجى مراجعة الجدول.</p>
-          </div>
+            <span className="text-3xl animate-bounce">⚠️</span>
+            <div>
+                <p className="font-black text-lg mb-1">تنبيه هام بالنواقص!</p>
+                <p className="text-sm font-bold">يوجد عدد <span className="font-black text-lg bg-red-200 dark:bg-red-800/50 text-red-900 dark:text-white px-2 py-0.5 rounded-md mx-1">{lowStockCount}</span> منتجات وصل مخزونها إلى 2 أو أقل، يرجى مراجعة الجدول.</p>
+            </div>
         </div>
       )}
 
@@ -197,77 +270,63 @@ function ProductsPage() {
       </div>
 
       <div className="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 mb-6 transition-colors duration-300">
-        <input
-          type="text"
-          className="w-full border-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4 rounded-xl outline-none focus:border-blue-400 dark:focus:border-blue-500 text-right font-bold text-gray-800 dark:text-gray-100 placeholder-gray-400 transition-colors"
-          placeholder="ابحث باسم البضاعة أو رقم التسلسل..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+          <input 
+             type="text" 
+             className="w-full border-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4 rounded-xl outline-none focus:border-blue-400 dark:focus:border-blue-500 text-right font-bold text-gray-800 dark:text-gray-100 placeholder-gray-400 transition-colors" 
+             placeholder="ابحث باسم البضاعة أو رقم التسلسل..." 
+             value={searchTerm} 
+             onChange={(e) => setSearchTerm(e.target.value)} 
+          />
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300">
         <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-right border-collapse min-w-[900px]">
+            <table className="w-full text-right border-collapse min-w-[700px]">
             <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-[11px] uppercase tracking-wider border-b border-gray-100 dark:border-gray-700">
-              <tr>
+                <tr>
                 <th className="p-4 font-bold">التسلسل</th>
                 <th className="p-4 font-bold">البضاعة (الاسم)</th>
                 <th className="p-4 font-bold">سعر الجملة</th>
                 <th className="p-4 font-bold">سعر البيع</th>
-                <th className="p-4 font-bold">الكمية</th>
-                <th className="p-4 font-bold text-center">إجمالي الجملة</th>
-                <th className="p-4 font-bold text-center">إجمالي البيع</th>
+                <th className="p-4 font-bold">الكمية المتوفرة</th>
                 <th className="p-4 font-bold text-center">الإجراءات</th>
-              </tr>
+                </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700 text-sm">
-              {filteredProducts.length === 0 ? (
-                <tr>
-                  <td colSpan="8" className="text-center p-10 text-gray-400 dark:text-gray-500 font-bold">
-                    <span className="text-3xl block mb-2">📦</span>
-                    لا توجد منتجات مطابقة للبحث
-                  </td>
-                </tr>
-              ) : (
-                filteredProducts.map((p) => {
-                  const rowWholesale = (parseFloat(p.wholesalePrice) || 0) * (parseInt(p.stock) || 0);
-                  const rowSelling   = (parseFloat(p.sellingPrice)   || 0) * (parseInt(p.stock) || 0);
-                  return (
+                {filteredProducts.length === 0 ? (
+                    <tr>
+                        <td colSpan="6" className="text-center p-10 text-gray-400 dark:text-gray-500 font-bold">
+                            <span className="text-3xl block mb-2">📦</span>
+                            لا توجد منتجات مطابقة للبحث
+                        </td>
+                    </tr>
+                ) : (
+                    filteredProducts.map((p) => (
                     <tr key={p.id} className={`transition-colors ${p.stock <= 2 ? 'bg-red-50/50 dark:bg-red-900/10 hover:bg-red-100/50 dark:hover:bg-red-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}>
-                      <td className="p-4 font-sans font-bold text-gray-400 dark:text-gray-500">#{p.serial}</td>
-                      <td className="p-4 font-bold text-gray-800 dark:text-gray-200">{p.name}</td>
-                      <td className="p-4 font-bold text-orange-600 dark:text-orange-400">{p.wholesalePrice} ج</td>
-                      <td className="p-4 font-black text-green-600 dark:text-green-400">{p.sellingPrice} ج</td>
-                      <td className="p-4">
+                        <td className="p-4 font-sans font-bold text-gray-400 dark:text-gray-500">#{p.serial}</td>
+                        <td className="p-4 font-bold text-gray-800 dark:text-gray-200">{p.name}</td>
+                        <td className="p-4 font-bold text-orange-600 dark:text-orange-400">{p.wholesalePrice} ج</td>
+                        <td className="p-4 font-black text-green-600 dark:text-green-400">{p.sellingPrice} ج</td>
+                        <td className="p-4">
                         <span className={`px-3 py-1.5 rounded-lg text-xs font-black shadow-sm border ${
-                          p.stock <= 0
-                            ? 'bg-red-600 border-red-600 text-white'
-                            : p.stock <= 2
-                            ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800/50'
+                            p.stock <= 0 
+                            ? 'bg-red-600 border-red-600 text-white' 
+                            : p.stock <= 2 
+                            ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800/50' 
                             : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/50'
                         }`}>
-                          {p.stock} حبة
+                            {p.stock} حبة
                         </span>
-                      </td>
-                      {/* ── إجمالي الجملة ── */}
-                      <td className="p-4 text-center font-bold text-orange-500 dark:text-orange-400">
-                        {rowWholesale.toLocaleString()} ج
-                      </td>
-                      {/* ── إجمالي البيع ── */}
-                      <td className="p-4 text-center font-black text-green-600 dark:text-green-400">
-                        {rowSelling.toLocaleString()} ج
-                      </td>
-                      <td className="p-4 flex justify-center gap-2">
+                        </td>
+                        <td className="p-4 flex justify-center gap-2">
                         <button onClick={() => openModal(p)} className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-all">تعديل</button>
                         <button onClick={() => deleteProduct(p.id, p.name)} className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 dark:hover:bg-red-900/40 transition-all">حذف</button>
-                      </td>
+                        </td>
                     </tr>
-                  );
-                })
-              )}
+                    ))
+                )}
             </tbody>
-          </table>
+            </table>
         </div>
       </div>
 
@@ -305,31 +364,32 @@ function ProductsPage() {
       </TailwindModal>
 
       {/* ------------------ مودال التحذير من تكرار المنتج ------------------ */}
-      <TailwindModal
-        show={showDuplicateModal}
-        onClose={() => setShowDuplicateModal(false)}
+      <TailwindModal 
+        show={showDuplicateModal} 
+        onClose={() => setShowDuplicateModal(false)} 
         title="تنبيه: منتج مكرر!"
         footer={
-          <>
-            <button onClick={() => setShowDuplicateModal(false)} className="px-5 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 text-sm transition-colors">
-              إلغاء
-            </button>
-            <button onClick={handleUpdateDuplicate} className="px-5 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 text-sm shadow-md transition-colors">
-              نعم، دمج مع المنتج
-            </button>
-          </>
+            <>
+                <button onClick={() => setShowDuplicateModal(false)} className="px-5 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 text-sm transition-colors">
+                    إلغاء
+                </button>
+                <button onClick={handleUpdateDuplicate} className="px-5 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 text-sm shadow-md transition-colors">
+                    نعم، دمج مع المنتج
+                </button>
+            </>
         }
       >
         <div className="py-2">
-          <p className="text-gray-700 dark:text-gray-200 font-bold text-lg">المنتج <strong className="text-blue-600 dark:text-blue-400">"{productForm.name}"</strong> موجود بالفعل في المخزون!</p>
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-xl mt-5 border border-blue-100 dark:border-blue-800/50 transition-colors">
-            <p className="text-gray-800 dark:text-white font-black mb-3 text-sm">إذا قمت بالدمج سيحدث التالي:</p>
-            <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-300 space-y-2 font-medium">
-              <li>سيتم جمع الكمية المدخلة (<span className="font-bold text-green-600 dark:text-green-400">{productForm.stock}</span>) مع المتوفرة حالياً (<span className="font-bold text-blue-600 dark:text-blue-400">{duplicateProduct?.stock}</span>).</li>
-              <li>الإجمالي الجديد سيصبح: <span className="font-black bg-green-200 dark:bg-green-800/50 px-2 py-0.5 rounded text-green-900 dark:text-white mx-1">{Number(productForm.stock) + Number(duplicateProduct?.stock)}</span>حبة.</li>
-              <li>سيتم تحديث الأسعار (سعر البيع والجملة) لتطابق المدخلات الجديدة.</li>
-            </ul>
-          </div>
+            <p className="text-gray-700 dark:text-gray-200 font-bold text-lg">المنتج <strong className="text-blue-600 dark:text-blue-400">"{productForm.name}"</strong> موجود بالفعل في المخزون!</p>
+            
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-xl mt-5 border border-blue-100 dark:border-blue-800/50 transition-colors">
+                <p className="text-gray-800 dark:text-white font-black mb-3 text-sm">إذا قمت بالدمج سيحدث التالي:</p>
+                <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-300 space-y-2 font-medium">
+                    <li>سيتم جمع الكمية المدخلة (<span className="font-bold text-green-600 dark:text-green-400">{productForm.stock}</span>) مع المتوفرة حالياً (<span className="font-bold text-blue-600 dark:text-blue-400">{duplicateProduct?.stock}</span>).</li>
+                    <li>الإجمالي الجديد سيصبح: <span className="font-black bg-green-200 dark:bg-green-800/50 px-2 py-0.5 rounded text-green-900 dark:text-white mx-1">{Number(productForm.stock) + Number(duplicateProduct?.stock)}</span>حبة.</li>
+                    <li>سيتم تحديث الأسعار (سعر البيع والجملة) لتطابق المدخلات الجديدة.</li>
+                </ul>
+            </div>
         </div>
       </TailwindModal>
 
