@@ -31,11 +31,11 @@ function UsersAdminPage() {
   // PERMISSIONS LIST
   // =======================
   const permissionsList = [
-    { key: "dashboard", label: "Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠØ©" },
-    { key: "clients", label: "Ø§Ù„Ø¹Ù…Ù„Ø§Ø¡" },
-    { key: "profits", label: "Ø§Ù„Ø£Ø±Ø¨Ø§Ø­" },
-    { key: "orders", label: "Ø§Ù„Ø·Ù„Ø¨Ø§Øª" },
-    { key: "products", label: "Ø§Ù„Ù…Ø®Ø²ÙˆÙ†" }
+    { key: "dashboard", label: "الرئيسية" },
+    { key: "clients", label: "العملاء" },
+    { key: "profits", label: "الأرباح" },
+    { key: "orders", label: "الطلبات" },
+    { key: "products", label: "المخزون" }
   ];
 
   // =======================
@@ -124,7 +124,7 @@ function UsersAdminPage() {
   // DELETE USER
   // =======================
   const deleteUser = async (id) => {
-    if (!window.confirm("Ù‡Ù„ Ø£Ù†Øª Ù…ØªØ£ÙƒØ¯ Ù…Ù† Ø­Ø°Ù Ù‡Ø°Ø§ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ØŸ")) return;
+    if (!window.confirm("هل أنت متأكد من حذف هذا المستخدم؟")) return;
 
     const userRef = doc(db, "users", id);
     const existingSnap = await getDoc(userRef);
@@ -193,8 +193,8 @@ function UsersAdminPage() {
       
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 mt-2">
           <div>
-            <h1 className="text-3xl font-black text-gray-800 dark:text-white tracking-tight">Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ† </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 font-bold mt-1">Ø§Ù„ØªØ­ÙƒÙ… ÙÙŠ Ø­Ø³Ø§Ø¨Ø§Øª Ø§Ù„Ù…ÙˆØ¸ÙÙŠÙ† ÙˆØµÙ„Ø§Ø­ÙŠØ§Øª Ø§Ù„ÙˆØµÙˆÙ„</p>
+            <h1 className="text-3xl font-black text-gray-800 dark:text-white tracking-tight">إدارة المستخدمين </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 font-bold mt-1">التحكم في حسابات الموظفين وصلاحيات الوصول</p>
           </div>
       </div>
 
@@ -208,14 +208,14 @@ function UsersAdminPage() {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
             </span>
             <h2 className="font-black text-xl text-gray-800 dark:text-white">
-            {editingUser ? "ØªØ¹Ø¯ÙŠÙ„ Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…" : "Ø¥Ø¶Ø§ÙØ© Ù…Ø³ØªØ®Ø¯Ù… Ø¬Ø¯ÙŠØ¯"}
+            {editingUser ? "تعديل بيانات المستخدم" : "إضافة مستخدم جديد"}
             </h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
             <input
             className="w-full border-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 rounded-xl outline-none focus:border-purple-500 dark:focus:border-purple-500 text-gray-800 dark:text-gray-100 font-bold transition-colors"
-            placeholder="Ø§Ø³Ù… Ø§Ù„Ù…ÙˆØ¸Ù"
+            placeholder="اسم الموظف"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
@@ -223,7 +223,7 @@ function UsersAdminPage() {
             <input
             type="email"
             className="w-full border-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 rounded-xl outline-none focus:border-purple-500 dark:focus:border-purple-500 text-gray-800 dark:text-gray-100 font-bold transition-colors"
-            placeholder="Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ (Ø§Ù„Ø¥ÙŠÙ…ÙŠÙ„)"
+            placeholder="البريد الإلكتروني (الإيميل)"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -231,7 +231,7 @@ function UsersAdminPage() {
             <input
             type="text"
             className="w-full border-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 rounded-xl outline-none focus:border-purple-500 dark:focus:border-purple-500 text-gray-800 dark:text-gray-100 font-bold transition-colors tracking-widest"
-            placeholder="ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± (Ø§Ù„Ø¨Ø§Ø³ÙˆØ±Ø¯)"
+            placeholder="كلمة المرور (الباسورد)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -239,7 +239,7 @@ function UsersAdminPage() {
         </div>
 
         <div className="bg-gray-50 dark:bg-gray-900/50 p-5 rounded-2xl border border-gray-100 dark:border-gray-700 mb-8">
-            <p className="font-black mb-4 text-gray-800 dark:text-gray-200">Ø§Ù„ØµÙ„Ø§Ø­ÙŠØ§Øª Ø§Ù„Ù…Ù…Ù†ÙˆØ­Ø©:</p>
+            <p className="font-black mb-4 text-gray-800 dark:text-gray-200">الصلاحيات الممنوحة:</p>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 {permissionsList.map((perm) => (
                 <label key={perm.key} className="flex items-center gap-3 cursor-pointer bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-500 transition-colors shadow-sm">
@@ -259,7 +259,7 @@ function UsersAdminPage() {
 
         <div className="flex gap-3">
             <button className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg shadow-purple-500/30 transition-all text-sm">
-                {editingUser ? "Ø­ÙØ¸ Ø§Ù„ØªØ¹Ø¯ÙŠÙ„Ø§Øª" : "+ Ø¥Ø¶Ø§ÙØ© Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…"}
+                {editingUser ? "حفظ التعديلات" : "+ إضافة المستخدم"}
             </button>
             {editingUser && (
             <button
@@ -267,7 +267,7 @@ function UsersAdminPage() {
                 onClick={resetForm}
                 className="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-bold px-8 py-3 rounded-xl transition-all text-sm"
             >
-                Ø¥Ù„ØºØ§Ø¡
+                إلغاء
             </button>
             )}
         </div>
@@ -275,9 +275,9 @@ function UsersAdminPage() {
 
       {/* ================= SEARCH ================= */}
       <div className="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 mb-6 flex items-center gap-3 transition-colors duration-300">
-        <span className="text-gray-400 pr-2">ðŸ”</span>
+        <span className="text-gray-400 pr-2">🔍</span>
         <input
-          placeholder="Ø§Ø¨Ø­Ø« Ø¹Ù† Ù…ÙˆØ¸Ù Ø¨Ø§Ù„Ø§Ø³Ù… Ø£Ùˆ Ø§Ù„Ø¥ÙŠÙ…ÙŠÙ„..."
+          placeholder="ابحث عن موظف بالاسم أو الإيميل..."
           className="w-full bg-transparent outline-none text-gray-800 dark:text-gray-100 font-bold placeholder-gray-400 py-1"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -290,30 +290,30 @@ function UsersAdminPage() {
             <table className="w-full text-center whitespace-nowrap">
             <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-[11px] uppercase tracking-wider border-b border-gray-100 dark:border-gray-700">
                 <tr>
-                <th className="p-4 font-bold">Ø§Ø³Ù… Ø§Ù„Ù…ÙˆØ¸Ù</th>
-                <th className="p-4 font-bold">Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ</th>
-                <th className="p-4 font-bold">Ø§Ù„ØµÙ„Ø§Ø­ÙŠØ§Øª</th>
-                <th className="p-4 font-bold">ØªØ¹Ø¯ÙŠÙ„</th>
-                <th className="p-4 font-bold">Ø­Ø°Ù</th>
+                <th className="p-4 font-bold">اسم الموظف</th>
+                <th className="p-4 font-bold">البريد الإلكتروني</th>
+                <th className="p-4 font-bold">الصلاحيات</th>
+                <th className="p-4 font-bold">تعديل</th>
+                <th className="p-4 font-bold">حذف</th>
                 </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700 text-sm">
                 {currentUsers.length === 0 ? (
                     <tr>
-                        <td colSpan="5" className="p-10 text-gray-400 dark:text-gray-500 font-bold">Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ† Ù…Ø³Ø¬Ù„ÙŠÙ†</td>
+                        <td colSpan="5" className="p-10 text-gray-400 dark:text-gray-500 font-bold">لا يوجد مستخدمين مسجلين</td>
                     </tr>
                 ) : (
                     currentUsers.map((user) => (
                     <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                         <td className="p-4 font-bold text-gray-800 dark:text-gray-200">
                         {user.name}
-                        {user.role === "super_admin" && <span className="ml-2 text-[10px] bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded font-black">Ù…Ø¯ÙŠØ± Ù†Ø¸Ø§Ù…</span>}
+                        {user.role === "super_admin" && <span className="ml-2 text-[10px] bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded font-black">مدير نظام</span>}
                         </td>
                         <td className="p-4 text-gray-500 dark:text-gray-400 font-sans">{user.email}</td>
                         <td className="p-4 text-xs">
                         <div className="flex flex-wrap justify-center gap-1.5">
                             {user.role === "super_admin" ? (
-                                <span className="bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 px-3 py-1 rounded-lg font-bold">ÙƒÙ„ Ø§Ù„ØµÙ„Ø§Ø­ÙŠØ§Øª</span>
+                                <span className="bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 px-3 py-1 rounded-lg font-bold">كل الصلاحيات</span>
                             ) : (
                                 user.permissions?.map((p) => {
                                     const permLabel = permissionsList.find((x) => x.key === p)?.label;
@@ -331,7 +331,7 @@ function UsersAdminPage() {
                             onClick={() => editUser(user)}
                             className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-4 py-1.5 rounded-xl text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-all"
                         >
-                            ØªØ¹Ø¯ÙŠÙ„
+                            تعديل
                         </button>
                         </td>
                         <td className="p-4">
@@ -340,7 +340,7 @@ function UsersAdminPage() {
                             disabled={user.role === "super_admin"}
                             className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${user.role === "super_admin" ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40'}`}
                         >
-                            Ø­Ø°Ù
+                            حذف
                         </button>
                         </td>
                     </tr>
