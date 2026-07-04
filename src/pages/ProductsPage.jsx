@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, orderBy } from "firebase/firestore";
+import { collection, doc, addDoc, setDoc, getDoc, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 
 // مكون الموديول الأساسي (تم تحديثه للدارك مود)
@@ -42,23 +42,36 @@ function ProductsPage() {
     stock: "",
   });
 
-  const fetchProducts = async () => {
-    setLoading(true);
-    try {
-      const q = query(collection(db, "products"), orderBy("serial", "asc"));
-      const querySnapshot = await getDocs(q);
-      setProducts(querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-    } catch (err) {
-      console.error("Error fetching products:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // جديد: استماع لحظي (onSnapshot) بدل القراءة لمرة واحدة (getDocs).
+  // ده بيخلي أي تغيير في Firebase (من الديسكتوب أو من مستخدم ويب تاني)
+  // يظهر هنا فورًا من غير ما تحتاج تعمل Refresh للصفحة.
+  // كمان بنستبعد أي منتج isDeleted:true عشان المنتجات المحذوفة
+  // متفضلش ظاهرة غلط.
+  useEffect(() => {
+    const q = query(collection(db, "products"), orderBy("serial", "asc"));
 
-  useEffect(() => { fetchProducts(); }, []);
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        const list = querySnapshot.docs
+          .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+          .filter((item) => !item.isDeleted);
+
+        setProducts(list);
+        setLoading(false);
+      },
+      (err) => {
+        console.error("Error listening to products:", err);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   const executeSave = async (idToUpdate) => {
     try {
+      const now = new Date().toISOString();
       const productData = {
         serial: Number(productForm.serial),
         name: productForm.name,
@@ -68,12 +81,33 @@ function ProductsPage() {
       };
 
       if (idToUpdate) {
-        await updateDoc(doc(db, "products", idToUpdate), productData);
+        const ref = doc(db, "products", idToUpdate);
+        const existingSnap = await getDoc(ref);
+        const existing = existingSnap.exists() ? existingSnap.data() : {};
+
+        await setDoc(ref, {
+          ...productData,
+          updatedAt: now,
+          version: Number(existing.version || 0) + 1,
+          isDeleted: false,
+          deletedAt: null,
+          isSynced: true,
+          lastSyncedAt: now,
+        }, { merge: true });
       } else {
-        await addDoc(collection(db, "products"), productData);
+        await addDoc(collection(db, "products"), {
+          ...productData,
+          createdAt: now,
+          updatedAt: now,
+          version: 1,
+          isDeleted: false,
+          deletedAt: null,
+          isSynced: true,
+          lastSyncedAt: now,
+        });
       }
       
-      closeAllAndRefresh();
+      closeAll();
     } catch (err) {
       alert("حدث خطأ أثناء الحفظ: " + err.message);
     }
@@ -81,30 +115,42 @@ function ProductsPage() {
 
   const handleUpdateDuplicate = async () => {
     try {
+      const now = new Date().toISOString();
       const combinedStock = Number(duplicateProduct.stock) + Number(productForm.stock);
+
+      const ref = doc(db, "products", duplicateProduct.id);
+      const existingSnap = await getDoc(ref);
+      const existing = existingSnap.exists() ? existingSnap.data() : {};
 
       const updatedData = {
         serial: Number(duplicateProduct.serial), 
         name: productForm.name,
         wholesalePrice: Number(productForm.wholesalePrice), 
         sellingPrice: Number(productForm.sellingPrice),
-        stock: combinedStock, 
+        stock: combinedStock,
+        updatedAt: now,
+        version: Number(existing.version || 0) + 1,
+        isDeleted: false,
+        deletedAt: null,
+        isSynced: true,
+        lastSyncedAt: now,
       };
 
-      await updateDoc(doc(db, "products", duplicateProduct.id), updatedData);
-      closeAllAndRefresh();
+      await setDoc(ref, updatedData, { merge: true });
+      closeAll();
     } catch (err) {
       alert("حدث خطأ أثناء التحديث: " + err.message);
     }
   };
 
-  const closeAllAndRefresh = () => {
+  const closeAll = () => {
     setShowModal(false);
     setShowDuplicateModal(false);
     setProductForm({ serial: "", name: "", wholesalePrice: "", sellingPrice: "", stock: "" });
     setEditingId(null);
     setDuplicateProduct(null);
-    fetchProducts();
+    // ملحوظة: مفيش داعي لإعادة تحميل القائمة يدويًا هنا،
+    // لأن onSnapshot هيستقبل التغيير ويحدّث القائمة تلقائيًا.
   };
 
   const saveProduct = async () => {
@@ -120,10 +166,29 @@ function ProductsPage() {
     await executeSave(editingId);
   };
 
+  // جديد: حذف "ناعم" (Soft Delete) بدل الحذف النهائي.
+  // بنفس طريقة الديسكتوب بالظبط: بنحط isDeleted:true بدل ما نمسح
+  // المستند. المنتج هيختفي فورًا من الويب والديسكتوب مع بعض،
+  // ومش هيرجع تاني إلا لو حد استخدم ميزة الاسترجاع بنفسه من الديسكتوب.
   const deleteProduct = async (id, name) => {
     if (window.confirm(`هل أنت متأكد من حذف المنتج "${name}"؟`)) {
-      await deleteDoc(doc(db, "products", id));
-      fetchProducts();
+      try {
+        const ref = doc(db, "products", id);
+        const existingSnap = await getDoc(ref);
+        const existing = existingSnap.exists() ? existingSnap.data() : {};
+        const deletedAt = new Date().toISOString();
+
+        await setDoc(ref, {
+          isDeleted: true,
+          deletedAt,
+          updatedAt: deletedAt,
+          version: Number(existing.version || 0) + 1,
+          isSynced: true,
+          lastSyncedAt: deletedAt,
+        }, { merge: true });
+      } catch (err) {
+        alert("حدث خطأ أثناء الحذف: " + err.message);
+      }
     }
   };
 
