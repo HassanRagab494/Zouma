@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
-  collection, getDocs, addDoc, doc, updateDoc,
-  deleteDoc, query, orderBy, increment,
+  collection, onSnapshot, addDoc, doc, getDoc, setDoc,
+  query, orderBy, increment,
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 
@@ -43,25 +43,41 @@ function OrdersPage() {
   const [successMessage, setSuccessMessage]   = useState("");
   const [copiedPhone, setCopiedPhone]         = useState(null);
 
-  /* ─── fetch ─── */
-  const fetchClients = useCallback(async () => {
+  /* ─── realtime listeners ─── */
+  useEffect(() => {
     setLoading(true);
-    try {
-      const q = query(collection(db, "clients"), orderBy("createdAt", "desc"));
-      const snap = await getDocs(q);
-      setClients(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
+    const q = query(collection(db, "clients"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list = snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((item) => !item.isDeleted);
+        setClients(list);
+        setLoading(false);
+      },
+      (err) => {
+        console.error(err);
+        setLoading(false);
+      }
+    );
+    return () => unsubscribe();
   }, []);
 
-  const fetchProducts = async () => {
-    try {
-      const snap = await getDocs(query(collection(db, "products")));
-      setAvailableProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    } catch (err) { console.error(err); }
-  };
-
-  useEffect(() => { fetchClients(); fetchProducts(); }, [fetchClients]);
+  useEffect(() => {
+    const q = query(collection(db, "products"));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list = snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((item) => !item.isDeleted);
+        setAvailableProducts(list);
+      },
+      (err) => console.error(err)
+    );
+    return () => unsubscribe();
+  }, []);
 
   /* ─── helpers ─── */
   const showSuccess = (msg) => { setSuccessMessage(msg); setTimeout(() => setSuccessMessage(""), 2000); };
@@ -94,17 +110,34 @@ function OrdersPage() {
   const saveClient = async () => {
     try {
       if (modalClient) {
-        await updateDoc(doc(db, "clients", modalClient.id), { ...clientForm });
-        await fetchClients();
+        const ref = doc(db, "clients", modalClient.id);
+        const existingSnap = await getDoc(ref);
+        const existing = existingSnap.exists() ? existingSnap.data() : {};
+        const now = new Date().toISOString();
+        await setDoc(ref, {
+          ...clientForm,
+          updatedAt: now,
+          version: Number(existing.version || 0) + 1,
+          isDeleted: false,
+          deletedAt: null,
+          isSynced: true,
+          lastSyncedAt: now,
+        }, { merge: true });
         setShowClientModal(false);
       } else {
+        const now = new Date().toISOString();
         const ref = await addDoc(collection(db, "clients"), {
           ...clientForm,
           clientCode: Math.floor(1000 + Math.random() * 9000).toString(),
           orders: [],
-          createdAt: new Date().toISOString(),
+          createdAt: now,
+          updatedAt: now,
+          version: 1,
+          isDeleted: false,
+          deletedAt: null,
+          isSynced: true,
+          lastSyncedAt: now,
         });
-        await fetchClients();
         setShowClientModal(false);
         openOrderModal(ref.id);
       }
@@ -114,8 +147,18 @@ function OrdersPage() {
   const deleteClient = async (clientId, clientName) => {
     if (!window.confirm(`هل أنت متأكد من حذف العميل "${clientName}"؟`)) return;
     try {
-      await deleteDoc(doc(db, "clients", clientId));
-      fetchClients();
+      const ref = doc(db, "clients", clientId);
+      const existingSnap = await getDoc(ref);
+      const existing = existingSnap.exists() ? existingSnap.data() : {};
+      const deletedAt = new Date().toISOString();
+      await setDoc(ref, {
+        isDeleted: true,
+        deletedAt,
+        updatedAt: deletedAt,
+        version: Number(existing.version || 0) + 1,
+        isSynced: true,
+        lastSyncedAt: deletedAt,
+      }, { merge: true });
     } catch (err) { alert("خطأ في الحذف"); }
   };
 
@@ -145,17 +188,39 @@ function OrdersPage() {
 
       if (!modalOrder) {
         for (const item of cleanItems) {
-          if (item.productId && item.qty)
-            await updateDoc(doc(db, "products", item.productId), { stock: increment(-item.qty) });
+          if (item.productId && item.qty) {
+            const productRef = doc(db, "products", item.productId);
+            const existingProductSnap = await getDoc(productRef);
+            const existingProduct = existingProductSnap.exists() ? existingProductSnap.data() : {};
+            const now = new Date().toISOString();
+            await setDoc(productRef, {
+              stock: increment(-item.qty),
+              updatedAt: now,
+              version: Number(existingProduct.version || 0) + 1,
+              isDeleted: false,
+              deletedAt: null,
+              isSynced: true,
+              lastSyncedAt: now,
+            }, { merge: true });
+          }
         }
         updatedOrders.push(orderData);
       } else {
         updatedOrders[modalOrder.index] = orderData;
       }
 
-      await updateDoc(clientRef, { orders: updatedOrders });
-      fetchClients();
-      fetchProducts();
+      const existingClientSnap = await getDoc(clientRef);
+      const existingClient = existingClientSnap.exists() ? existingClientSnap.data() : {};
+      const now = new Date().toISOString();
+      await setDoc(clientRef, {
+        orders: updatedOrders,
+        updatedAt: now,
+        version: Number(existingClient.version || 0) + 1,
+        isDeleted: false,
+        deletedAt: null,
+        isSynced: true,
+        lastSyncedAt: now,
+      }, { merge: true });
       setShowOrderModal(false);
     } catch (err) { alert(err.message); }
   };
@@ -168,13 +233,35 @@ function OrdersPage() {
       const orderToDelete = client.orders[orderIndex];
       if (orderToDelete.status !== "DELIVERED") {
         for (const item of orderToDelete.items) {
-          if (item.productId && item.qty)
-            await updateDoc(doc(db, "products", item.productId), { stock: increment(item.qty) });
+          if (item.productId && item.qty) {
+            const productRef = doc(db, "products", item.productId);
+            const existingProductSnap = await getDoc(productRef);
+            const existingProduct = existingProductSnap.exists() ? existingProductSnap.data() : {};
+            const now = new Date().toISOString();
+            await setDoc(productRef, {
+              stock: increment(item.qty),
+              updatedAt: now,
+              version: Number(existingProduct.version || 0) + 1,
+              isDeleted: false,
+              deletedAt: null,
+              isSynced: true,
+              lastSyncedAt: now,
+            }, { merge: true });
+          }
         }
       }
-      await updateDoc(clientRef, { orders: client.orders.filter((_, i) => i !== orderIndex) });
-      fetchClients();
-      fetchProducts();
+      const existingClientSnap = await getDoc(clientRef);
+      const existingClient = existingClientSnap.exists() ? existingClientSnap.data() : {};
+      const now = new Date().toISOString();
+      await setDoc(clientRef, {
+        orders: client.orders.filter((_, i) => i !== orderIndex),
+        updatedAt: now,
+        version: Number(existingClient.version || 0) + 1,
+        isDeleted: false,
+        deletedAt: null,
+        isSynced: true,
+        lastSyncedAt: now,
+      }, { merge: true });
     } catch (err) { alert("خطأ في حذف الفاتورة"); }
   };
 
@@ -203,8 +290,19 @@ function OrdersPage() {
         delete updated[orderIndex]._originalPaidAmount;
       }
 
-      await updateDoc(doc(db, "clients", clientId), { orders: updated });
-      fetchClients();
+      const clientRef = doc(db, "clients", clientId);
+      const existingClientSnap = await getDoc(clientRef);
+      const existingClient = existingClientSnap.exists() ? existingClientSnap.data() : {};
+      const now = new Date().toISOString();
+      await setDoc(clientRef, {
+        orders: updated,
+        updatedAt: now,
+        version: Number(existingClient.version || 0) + 1,
+        isDeleted: false,
+        deletedAt: null,
+        isSynced: true,
+        lastSyncedAt: now,
+      }, { merge: true });
       showSuccess("تم تحديث حالة الأوردر");
     } catch { alert("خطأ في التحديث"); }
   };
