@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { collection, getDocs, deleteDoc, doc, orderBy, query } from "firebase/firestore";
+import React, { useEffect, useState } from "react";
+import { collection, doc, setDoc, getDoc, onSnapshot, orderBy, query } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { FaWhatsapp, FaPhone } from "react-icons/fa";
 
@@ -10,44 +10,68 @@ function ClientsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClient, setSelectedClient] = useState(null);
 
-  // دالة جلب البيانات مع الترتيب
-  const fetchClients = useCallback(async () => {
-    setLoading(true);
-    try {
-      const q = query(collection(db, "clients"), orderBy("createdAt", "desc"));
-      const querySnapshot = await getDocs(q);
+  // جديد: استماع لحظي (onSnapshot) بدل القراءة لمرة واحدة (getDocs).
+  // كمان بنستبعد أي عميل isDeleted:true عشان اللي بيتحذف من الديسكتوب
+  // يختفي هنا فورًا من غير Refresh.
+  useEffect(() => {
+    const q = query(collection(db, "clients"), orderBy("createdAt", "desc"));
 
-      let clientsList = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        try {
+          let clientsList = querySnapshot.docs
+            .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+            .filter((item) => !item.isDeleted);
 
-      // الترتيب حسب إجمالي المشتريات (الأعلى فوق)
-      clientsList.sort((a, b) => {
-        const totalA = (a.orders || []).reduce((sum, o) => sum + Number(o.total || 0), 0);
-        const totalB = (b.orders || []).reduce((sum, o) => sum + Number(o.total || 0), 0);
-        return totalB - totalA;
-      });
+          // الترتيب حسب إجمالي المشتريات (الأعلى فوق)
+          clientsList.sort((a, b) => {
+            const totalA = (a.orders || []).reduce((sum, o) => sum + Number(o.total || 0), 0);
+            const totalB = (b.orders || []).reduce((sum, o) => sum + Number(o.total || 0), 0);
+            return totalB - totalA;
+          });
 
-      setClients(clientsList);
-    } catch (err) {
-      console.error(err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+          setClients(clientsList);
+        } catch (err) {
+          console.error(err);
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      },
+      (err) => {
+        console.error(err);
+        setError(err.message);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    fetchClients();
-  }, [fetchClients]);
-
+  // جديد: حذف "ناعم" (Soft Delete) بدل الحذف النهائي، بنفس طريقة الديسكتوب
+  // بالظبط. العميل هيختفي فورًا من الويب والديسكتوب مع بعض، ومش هيرجع
+  // تاني إلا لو حد استخدم ميزة الاسترجاع بنفسه من الديسكتوب.
   const handleDeleteClient = async (clientId) => {
     if (!window.confirm("هل أنت متأكد أنك تريد حذف هذا العميل؟")) return;
     try {
-      await deleteDoc(doc(db, "clients", clientId));
-      setClients((prev) => prev.filter((c) => c.id !== clientId));
+      const ref = doc(db, "clients", clientId);
+      const existingSnap = await getDoc(ref);
+      const existing = existingSnap.exists() ? existingSnap.data() : {};
+      const deletedAt = new Date().toISOString();
+
+      await setDoc(ref, {
+        isDeleted: true,
+        deletedAt,
+        updatedAt: deletedAt,
+        version: Number(existing.version || 0) + 1,
+        isSynced: true,
+        lastSyncedAt: deletedAt,
+      }, { merge: true });
+
       setSelectedClient(null);
+      // ملحوظة: مفيش داعي نمسح العميل يدويًا من القائمة،
+      // onSnapshot هيستقبل التغيير ويحدّث القائمة تلقائيًا.
     } catch (err) {
       console.error(err);
       alert("حدث خطأ أثناء حذف العميل");
