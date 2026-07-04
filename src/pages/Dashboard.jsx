@@ -96,7 +96,7 @@ function Dashboard() {
       setExportSuccess(true);
       setTimeout(() => setExportSuccess(false), 3000);
     } catch (err) {
-      alert("Ø­Ø¯Ø« Ø®Ø·Ø£ Ø£Ø«Ù†Ø§Ø¡ Ø§Ù„ØªØµØ¯ÙŠØ±");
+      alert("حدث خطأ أثناء التصدير");
     }
   };
 
@@ -118,7 +118,7 @@ function Dashboard() {
 
     const totalDebts = totalRevenue - totalCollected;
 
-    // Ù‚ÙŠÙ…Ø© Ø§Ù„Ù…Ø®Ø²ÙˆÙ† = Ø³Ø¹Ø± Ø§Ù„Ø¬Ù…Ù„Ø© Ã— Ø§Ù„ÙƒÙ…ÙŠØ©
+    // قيمة المخزون = سعر الجملة × الكمية
     const totalInventoryValue = products.reduce(
       (sum, p) => sum + (parseFloat(p.wholesalePrice) || 0) * (parseInt(p.stock) || 0),
       0
@@ -154,13 +154,13 @@ function Dashboard() {
     };
   }, [clients, products]);
 
-  const months = ["ÙŠÙ†Ø§ÙŠØ±","ÙØ¨Ø±Ø§ÙŠØ±","Ù…Ø§Ø±Ø³","Ø¥Ø¨Ø±ÙŠÙ„","Ù…Ø§ÙŠÙˆ","ÙŠÙˆÙ†ÙŠÙˆ","ÙŠÙˆÙ„ÙŠÙˆ","Ø£ØºØ³Ø·Ø³","Ø³Ø¨ØªÙ…Ø¨Ø±","Ø£ÙƒØªÙˆØ¨Ø±","Ù†ÙˆÙÙ…Ø¨Ø±","Ø¯ÙŠØ³Ù…Ø¨Ø±"];
+  const months = ["يناير","فبراير","مارس","إبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
 
   const salesData = {
     labels: months,
     datasets: [
       {
-        label: `Ù…Ø¨ÙŠØ¹Ø§Øª ${stats.currentYear}`,
+        label: `مبيعات ${stats.currentYear}`,
         data: stats.salesPerMonth,
         borderColor: "#4f46e5",
         backgroundColor: "rgba(79, 70, 229, 0.15)",
@@ -183,7 +183,7 @@ function Dashboard() {
       y: {
         beginAtZero: true,
         grid: { borderDash: [5, 5], color: "rgba(156, 163, 175, 0.2)" },
-        ticks: { color: "#9ca3af", callback: (value) => value.toLocaleString() + " Ø¬" },
+        ticks: { color: "#9ca3af", callback: (value) => value.toLocaleString() + " ج" },
       },
       x: {
         grid: { display: false },
@@ -200,23 +200,23 @@ function Dashboard() {
     return (
       <div className="flex flex-col justify-center items-center h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
         <div className="w-12 h-12 border-4 border-blue-200 dark:border-gray-700 border-t-blue-600 dark:border-t-blue-500 rounded-full animate-spin mb-4"></div>
-        <p className="text-xl font-bold animate-pulse text-blue-600 dark:text-blue-400">Ø¬Ø§Ø±Ù ØªØ­Ù„ÙŠÙ„ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª...</p>
+        <p className="text-xl font-bold animate-pulse text-blue-600 dark:text-blue-400">جارٍ تحليل البيانات...</p>
       </div>
     );
 
   return (
     <div className="p-4 md:p-8 bg-gray-50/50 dark:bg-gray-900 min-h-screen font-sans transition-colors duration-300" dir="rtl">
 
-      {/* ØªÙ†Ø¨ÙŠÙ‡ Ø§Ù„Ø¨Ø§Ùƒ Ø§Ø¨ */}
+      {/* تنبيه الباك اب */}
       {showBackupWarning && (
         <div className="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">âš ï¸</span>
+            <span className="text-2xl">⚠️</span>
             <div>
               <p className="font-black text-amber-800 dark:text-amber-400 text-sm">
-                {daysSinceBackup === null ? "Ù„Ù… ÙŠØªÙ… Ø¹Ù…Ù„ Ø¨Ø§Ùƒ Ø§Ø¨ Ø¨Ø¹Ø¯!" : `Ø¢Ø®Ø± Ø¨Ø§Ùƒ Ø§Ø¨ Ù…Ù†Ø° ${daysSinceBackup} ÙŠÙˆÙ…`}
+                {daysSinceBackup === null ? "لم يتم عمل باك اب بعد!" : `آخر باك اب منذ ${daysSinceBackup} يوم`}
               </p>
-              <p className="text-xs text-amber-600 dark:text-amber-500 font-bold mt-0.5">ÙŠÙÙ†ØµØ­ Ø¨Ø¹Ù…Ù„ Ø¨Ø§Ùƒ Ø§Ø¨ ÙŠÙˆÙ…ÙŠ Ù„Ø­Ù…Ø§ÙŠØ© Ø¨ÙŠØ§Ù†Ø§ØªÙƒ</p>
+              <p className="text-xs text-amber-600 dark:text-amber-500 font-bold mt-0.5">يُنصح بعمل باك اب يومي لحماية بياناتك</p>
             </div>
           </div>
           <button
@@ -227,16 +227,16 @@ function Dashboard() {
                 : "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/30"
             }`}
           >
-            {exportSuccess ? "âœ… ØªÙ… Ø§Ù„ØªØµØ¯ÙŠØ±!" : "ðŸ’¾ Ø¹Ù…Ù„ Ø¨Ø§Ùƒ Ø§Ø¨ Ø§Ù„Ø¢Ù†"}
+            {exportSuccess ? "✅ تم التصدير!" : "💾 عمل باك اب الآن"}
           </button>
         </div>
       )}
 
-      {/* Ø§Ù„Ù‡ÙŠØ¯Ø± */}
+      {/* الهيدر */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 mt-4">
         <div>
-          <h2 className="text-3xl font-black text-gray-800 dark:text-white tracking-tight transition-colors">Ù„ÙˆØ­Ø© Ø§Ù„ØªØ­ÙƒÙ…</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 font-bold mt-1 transition-colors">Ù…Ù„Ø®Øµ Ù…Ø§Ù„ÙŠ ÙˆØ¥Ø­ØµØ§Ø¦ÙŠ Ù„Ø­Ø±ÙƒØ© Ø§Ù„Ù…Ø­Ù„</p>
+          <h2 className="text-3xl font-black text-gray-800 dark:text-white tracking-tight transition-colors">لوحة التحكم</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 font-bold mt-1 transition-colors">ملخص مالي وإحصائي لحركة المحل</p>
         </div>
         <button
           onClick={handleExport}
@@ -246,70 +246,70 @@ function Dashboard() {
               : "bg-gray-800 dark:bg-gray-700 hover:bg-gray-700 dark:hover:bg-gray-600 text-white"
           }`}
         >
-          {exportSuccess ? "âœ… ØªÙ… Ø§Ù„ØªØµØ¯ÙŠØ±!" : "ðŸ’¾ ØªØµØ¯ÙŠØ± Ø¨Ø§Ùƒ Ø§Ø¨"}
+          {exportSuccess ? "✅ تم التصدير!" : "💾 تصدير باك اب"}
         </button>
       </div>
 
-      {/* Ø§Ù„ÙƒØ±ÙˆØª */}
+      {/* الكروت */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
 
-        {/* Ø§Ù„Ù…Ø¨ÙŠØ¹Ø§Øª */}
+        {/* المبيعات */}
         <div className="xl:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 border-r-4 border-r-blue-500 hover:-translate-y-1 transition-all duration-300">
-          <h5 className="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-wider mb-2">Ø­Ø¬Ù… Ø§Ù„Ø¹Ù…Ù„ (Ø§Ù„Ù…Ø¨ÙŠØ¹Ø§Øª)</h5>
-          <p className="text-2xl font-black text-gray-800 dark:text-white">{stats.totalRevenue.toLocaleString()} <span className="text-sm text-gray-400">Ø¬</span></p>
+          <h5 className="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-wider mb-2">حجم العمل (المبيعات)</h5>
+          <p className="text-2xl font-black text-gray-800 dark:text-white">{stats.totalRevenue.toLocaleString()} <span className="text-sm text-gray-400">ج</span></p>
         </div>
 
-        {/* Ø§Ù„Ù…Ø­ØµÙ„ */}
+        {/* المحصل */}
         <div className="xl:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 border-r-4 border-r-green-500 hover:-translate-y-1 transition-all duration-300">
-          <h5 className="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-wider mb-2">Ø§Ù„Ù…Ø­ØµÙ„ Ø¨Ø§Ù„Ø®Ø²ÙŠÙ†Ø©</h5>
-          <p className="text-2xl font-black text-green-600 dark:text-green-400">{stats.totalCollected.toLocaleString()} <span className="text-sm text-green-400/70">Ø¬</span></p>
+          <h5 className="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-wider mb-2">المحصل بالخزينة</h5>
+          <p className="text-2xl font-black text-green-600 dark:text-green-400">{stats.totalCollected.toLocaleString()} <span className="text-sm text-green-400/70">ج</span></p>
         </div>
 
-        {/* Ø§Ù„Ø¯ÙŠÙˆÙ† */}
+        {/* الديون */}
         <div className="xl:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 border-r-4 border-r-red-500 hover:-translate-y-1 transition-all duration-300">
-          <h5 className="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-wider mb-2">Ø¯ÙŠÙˆÙ† Ø¨Ø§Ù„Ø³ÙˆÙ‚ (Ù„Ù„Ù…Ø­Ù„)</h5>
-          <p className="text-2xl font-black text-red-600 dark:text-red-400">{stats.totalDebts.toLocaleString()} <span className="text-sm text-red-400/70">Ø¬</span></p>
+          <h5 className="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-wider mb-2">ديون بالسوق (للمحل)</h5>
+          <p className="text-2xl font-black text-red-600 dark:text-red-400">{stats.totalDebts.toLocaleString()} <span className="text-sm text-red-400/70">ج</span></p>
         </div>
 
-        {/* Ø§Ù„Ø¹Ù…Ù„Ø§Ø¡ ÙˆØ§Ù„Ø£ÙˆØ±Ø¯Ø±Ø§Øª */}
+        {/* العملاء والأوردرات */}
         <div className="xl:col-span-3 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 border-r-4 border-r-purple-500 hover:-translate-y-1 transition-all duration-300">
-          <h5 className="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-wider mb-2">Ø¹Ù…Ù„Ø§Ø¡ / Ø£ÙˆØ±Ø¯Ø±Ø§Øª</h5>
+          <h5 className="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-wider mb-2">عملاء / أوردرات</h5>
           <p className="text-2xl font-black text-gray-800 dark:text-white">
-            {stats.totalClients} <span className="text-sm font-bold text-gray-400">Ø¹Ù…ÙŠÙ„</span>
+            {stats.totalClients} <span className="text-sm font-bold text-gray-400">عميل</span>
             <span className="text-purple-300 dark:text-purple-600/50 mx-2">|</span>
-            {stats.totalOrders} <span className="text-sm font-bold text-gray-400">ÙØ§ØªÙˆØ±Ø©</span>
+            {stats.totalOrders} <span className="text-sm font-bold text-gray-400">فاتورة</span>
           </p>
         </div>
 
-        {/* Ù‚ÙŠÙ…Ø© Ø§Ù„Ù…Ø®Ø²ÙˆÙ† */}
+        {/* قيمة المخزون */}
         <div className="xl:col-span-3 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 border-r-4 border-r-orange-500 hover:-translate-y-1 transition-all duration-300">
-          <h5 className="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-wider mb-2">Ù‚ÙŠÙ…Ø© Ø§Ù„Ù…Ø®Ø²ÙˆÙ† Ø§Ù„Ø­Ø§Ù„ÙŠØ©</h5>
-          <p className="text-2xl font-black text-orange-600 dark:text-orange-400">{stats.totalInventoryValue.toLocaleString()} <span className="text-sm text-orange-400/70">Ø¬</span></p>
-          <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold mt-1">Ø³Ø¹Ø± Ø§Ù„Ø¬Ù…Ù„Ø© Ã— Ø§Ù„ÙƒÙ…ÙŠØ©</p>
+          <h5 className="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-wider mb-2">قيمة المخزون الحالية</h5>
+          <p className="text-2xl font-black text-orange-600 dark:text-orange-400">{stats.totalInventoryValue.toLocaleString()} <span className="text-sm text-orange-400/70">ج</span></p>
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold mt-1">سعر الجملة × الكمية</p>
         </div>
 
       </div>
 
       <div className="mt-2 grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* Ø§Ù„Ù…Ø®Ø·Ø· Ø§Ù„Ø¨ÙŠØ§Ù†ÙŠ */}
+        {/* المخطط البياني */}
         <div className="lg:col-span-2 bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 rounded-2xl p-6 transition-colors duration-300">
           <div className="flex justify-between items-center mb-6">
-            <h5 className="text-lg font-black text-gray-800 dark:text-white">Ù…Ø¤Ø´Ø± Ø§Ù„Ù…Ø¨ÙŠØ¹Ø§Øª Ø§Ù„Ø´Ù‡Ø±ÙŠ</h5>
-            <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-full text-xs font-bold border border-indigo-100 dark:border-indigo-800/50">Ø¹Ø§Ù… {stats.currentYear}</span>
+            <h5 className="text-lg font-black text-gray-800 dark:text-white">مؤشر المبيعات الشهري</h5>
+            <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-full text-xs font-bold border border-indigo-100 dark:border-indigo-800/50">عام {stats.currentYear}</span>
           </div>
           <div className="h-[350px]">
             <Line data={salesData} options={salesOptions} />
           </div>
         </div>
 
-        {/* Ø£ÙØ¶Ù„ Ø§Ù„Ø¹Ù…Ù„Ø§Ø¡ */}
+        {/* أفضل العملاء */}
         <div className="bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 rounded-2xl p-6 flex flex-col transition-colors duration-300">
-          <h5 className="text-lg font-black mb-6 text-gray-800 dark:text-white flex items-center gap-2">â­ Ø£ÙØ¶Ù„ Ø§Ù„Ø¹Ù…Ù„Ø§Ø¡ (Top 5)</h5>
+          <h5 className="text-lg font-black mb-6 text-gray-800 dark:text-white flex items-center gap-2">⭐ أفضل العملاء (Top 5)</h5>
           <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
             <ul className="space-y-3">
               {stats.topClients.length === 0 ? (
-                <li className="text-center py-10 text-gray-400 dark:text-gray-500 font-bold">Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¨ÙŠØ§Ù†Ø§Øª Ø­Ø§Ù„ÙŠØ§Ù‹</li>
+                <li className="text-center py-10 text-gray-400 dark:text-gray-500 font-bold">لا توجد بيانات حالياً</li>
               ) : (
                 stats.topClients.map((c, index) => (
                   <li key={c.id} className="flex justify-between items-center p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl transition-colors border border-transparent hover:border-gray-100 dark:hover:border-gray-600">
@@ -328,8 +328,8 @@ function Dashboard() {
                       </div>
                     </div>
                     <div className="text-left">
-                      <p className="text-sm font-black text-green-600 dark:text-green-400">{c.totalSpent.toLocaleString()} Ø¬</p>
-                      <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">Ù…Ø³Ø­ÙˆØ¨Ø§Øª</p>
+                      <p className="text-sm font-black text-green-600 dark:text-green-400">{c.totalSpent.toLocaleString()} ج</p>
+                      <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">مسحوبات</p>
                     </div>
                   </li>
                 ))
