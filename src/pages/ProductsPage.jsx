@@ -105,6 +105,11 @@ function ProductsPage() {
           isSynced: true,
           lastSyncedAt: now,
         });
+        const purchaseAmount = Number(productForm.wholesalePrice) * Number(productForm.stock);
+        if (purchaseAmount > 0) await addDoc(collection(db, "ledger"), {
+          title: "بضاعة", type: "expense", amount: purchaseAmount,
+          note: `${productForm.name} — ${productForm.stock} قطعة`, source: "product", createdAt: now,
+        });
       }
       
       closeAll();
@@ -137,6 +142,11 @@ function ProductsPage() {
       };
 
       await setDoc(ref, updatedData, { merge: true });
+      const purchaseAmount = Number(productForm.wholesalePrice) * Number(productForm.stock);
+      if (purchaseAmount > 0) await addDoc(collection(db, "ledger"), {
+        title: "بضاعة", type: "expense", amount: purchaseAmount,
+        note: `${productForm.name} — إضافة ${productForm.stock} قطعة`, source: "product", createdAt: now,
+      });
       closeAll();
     } catch (err) {
       alert("حدث خطأ أثناء التحديث: " + err.message);

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
-  collection, onSnapshot, addDoc, doc, getDoc, setDoc,
+  collection, onSnapshot, addDoc, doc, getDoc, setDoc, deleteDoc,
   query, orderBy, increment,
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
@@ -81,6 +81,18 @@ function OrdersPage() {
 
   /* helpers */
   const showSuccess = (msg) => { setSuccessMessage(msg); setTimeout(() => setSuccessMessage(""), 2000); };
+
+  const syncOrderLedger = async (clientId, orderIndex, order) => {
+    const entryId = `order_${clientId}_${orderIndex}`;
+    const paid = Number(order.paidAmount || 0);
+    if (paid > 0) {
+      await setDoc(doc(db, "ledger", entryId), {
+        title: "تحصيل طلبات", type: "income", amount: paid,
+        note: `دفعة من ${clients.find((item) => item.id === clientId)?.name || "عميل"}`,
+        source: "order", sourceId: entryId, createdAt: order.paidAt || new Date().toISOString(),
+      }, { merge: true });
+    } else await deleteDoc(doc(db, "ledger", entryId));
+  };
 
   const openWhatsApp = (phone) => {
     const clean = phone.replace(/\D/g, "");
@@ -221,6 +233,7 @@ function OrdersPage() {
         isSynced: true,
         lastSyncedAt: now,
       }, { merge: true });
+      await syncOrderLedger(currentClientId, modalOrder ? modalOrder.index : updatedOrders.length - 1, orderData);
       setShowOrderModal(false);
     } catch (err) { alert(err.message); }
   };
@@ -262,6 +275,7 @@ function OrdersPage() {
         isSynced: true,
         lastSyncedAt: now,
       }, { merge: true });
+      await deleteDoc(doc(db, "ledger", `order_${clientId}_${orderIndex}`));
     } catch (err) { alert("خطأ في حذف الفاتورة"); }
   };
 
@@ -301,6 +315,7 @@ function OrdersPage() {
         isSynced: true,
         lastSyncedAt: now,
       }, { merge: true });
+      await syncOrderLedger(clientId, orderIndex, updated[orderIndex]);
       showSuccess("تم تحديث حالة الأوردر");
     } catch { alert("خطأ في التحديث"); }
   };
