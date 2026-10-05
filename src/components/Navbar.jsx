@@ -25,8 +25,12 @@ const Navbar = () => {
           getDocs(collection(db, "products"))
         ]);
 
-        const clients = clientsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        const products = productsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        const clients = clientsSnapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .filter((client) => !client.isDeleted);
+        const products = productsSnapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .filter((product) => !product.isDeleted);
         
         generateNotifications(clients, products);
       } catch (err) {
@@ -58,7 +62,7 @@ const Navbar = () => {
       });
 
       products.forEach((product) => {
-        if (product.stock <= 5) {
+        if (Number(product.stock) <= 5) {
           notes.push({ 
              type: "stock", 
              text: `نواقص: "${product.name}" وصل مخزونه إلى ${product.stock} حبة فقط!` 
@@ -116,6 +120,8 @@ const Navbar = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("userData");
+    window.dispatchEvent(new Event("auth:logout"));
     navigate("/login");
   };
 

@@ -87,6 +87,13 @@ function App() {
       localStorage.removeItem("userData");
       setIsAuthenticated(false);
     }
+
+    const handleLogout = () => {
+      setIsAuthenticated(false);
+      setCurrentUser(null);
+    };
+    window.addEventListener("auth:logout", handleLogout);
+    return () => window.removeEventListener("auth:logout", handleLogout);
   }, []);
 
   return (
