@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
   collection, getDocs, addDoc, doc, updateDoc,
-  deleteDoc, query, orderBy, increment,
+  deleteDoc, query, orderBy, increment, setDoc,
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 
@@ -65,6 +65,20 @@ function OrdersPage() {
 
   /* ─── helpers ─── */
   const showSuccess = (msg) => { setSuccessMessage(msg); setTimeout(() => setSuccessMessage(""), 2000); };
+
+  const syncOrderLedger = async (clientId, orderIndex, order) => {
+    const entryId = `order_${clientId}_${orderIndex}`;
+    const paid = Number(order.paidAmount || 0);
+    if (paid > 0) {
+      await setDoc(doc(db, "ledger", entryId), {
+        title: "تحصيل طلبات", type: "income", amount: paid,
+        note: `دفعة من ${clients.find((item) => item.id === clientId)?.name || "عميل"}`,
+        source: "order", sourceId: entryId, createdAt: order.paidAt || new Date().toISOString(),
+      }, { merge: true });
+    } else {
+      await deleteDoc(doc(db, "ledger", entryId));
+    }
+  };
 
   const openWhatsApp = (phone) => {
     const clean = phone.replace(/\D/g, "");
@@ -154,6 +168,7 @@ function OrdersPage() {
       }
 
       await updateDoc(clientRef, { orders: updatedOrders });
+       await syncOrderLedger(currentClientId, modalOrder ? modalOrder.index : updatedOrders.length - 1, orderData);
       fetchClients();
       fetchProducts();
       setShowOrderModal(false);
@@ -173,6 +188,7 @@ function OrdersPage() {
         }
       }
       await updateDoc(clientRef, { orders: client.orders.filter((_, i) => i !== orderIndex) });
+      await deleteDoc(doc(db, "ledger", `order_${clientId}_${orderIndex}`));
       fetchClients();
       fetchProducts();
     } catch (err) { alert("خطأ في حذف الفاتورة"); }
@@ -187,9 +203,11 @@ const updateStatusQuickly = async (clientId, orderIndex, newStatus) => {
     // ✅ لو تم الاستلام، اعتبر المبلغ كله اتحصل
     if (newStatus === "DELIVERED") {
       updated[orderIndex].paidAmount = updated[orderIndex].total;
+      updated[orderIndex].paidAt = new Date().toISOString();
     }
 
     await updateDoc(doc(db, "clients", clientId), { orders: updated });
+    await syncOrderLedger(clientId, orderIndex, updated[orderIndex]);
     fetchClients();
     showSuccess("تم تحديث حالة الأوردر");
   } catch { alert("خطأ في التحديث"); }

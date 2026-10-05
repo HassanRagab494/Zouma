@@ -26,8 +26,14 @@ function Login({ setIsAuthenticated, setCurrentUser }) {
     const auth = localStorage.getItem("isAuthenticated");
     if (auth === "true") {
       setIsAuthenticated(true);
-      const user = JSON.parse(localStorage.getItem("userData"));
-      if (user) setCurrentUser(user);
+      try {
+        const rawUser = localStorage.getItem("userData");
+        const user = rawUser ? JSON.parse(rawUser) : null;
+        if (user && typeof user === "object") setCurrentUser(user);
+      } catch {
+        localStorage.removeItem("isAuthenticated");
+        localStorage.removeItem("userData");
+      }
       navigate("/"); 
     }
   }, [navigate, setIsAuthenticated, setCurrentUser]); 

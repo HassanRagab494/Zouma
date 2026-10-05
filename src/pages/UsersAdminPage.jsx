@@ -10,6 +10,11 @@ import {
 
 import { db } from "../firebaseConfig";
 
+// Keep the collection reference stable between renders. Creating it inside the
+// component changes the useCallback dependency on every render and can cause
+// the initial-load effect to run repeatedly.
+const usersCollection = collection(db, "users");
+
 function UsersAdminPage() {
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
@@ -35,9 +40,8 @@ function UsersAdminPage() {
     { key: "profits", label: "الأرباح" },
     { key: "orders", label: "الطلبات" },
     { key: "products", label: "المخزون" }
+    ,{ key: "ledger", label: "الدفتر" }
   ];
-
-  const usersCollection = collection(db, "users");
 
   // =======================
   // GET USERS
@@ -50,7 +54,7 @@ function UsersAdminPage() {
     }));
     setUsers(list);
     setFilteredUsers(list);
-  }, [usersCollection]);
+  }, []);
 
   // =======================
   // LOAD USERS

@@ -19,6 +19,7 @@ import ProductsPage from "./pages/ProductsPage";
 import UsersAdminPage from "./pages/UsersAdminPage";
 import ClientsPhoneBook from "./pages/ClientsPhoneBook";
 import RestorePage from "./pages/RestorePage";
+import LedgerPage from "./pages/LedgerPage";
 
 import Login from "./pages/Login";
 
@@ -65,7 +66,9 @@ function App() {
 
   useEffect(() => {
     const storedTheme = localStorage.getItem("theme");
-    if (storedTheme === "dark" || (!storedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+    const prefersDark = typeof window.matchMedia === "function"
+      && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    if (storedTheme === "dark" || (!storedTheme && prefersDark)) {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.remove("dark");
@@ -74,9 +77,15 @@ function App() {
     const auth = localStorage.getItem("isAuthenticated") === "true";
     setIsAuthenticated(auth);
 
-    const user = JSON.parse(localStorage.getItem("userData"));
-    if (user) {
-      setCurrentUser(user);
+    try {
+      const rawUser = localStorage.getItem("userData");
+      const user = rawUser ? JSON.parse(rawUser) : null;
+      if (user && typeof user === "object") setCurrentUser(user);
+    } catch {
+      // Ignore corrupted session data and leave the app unauthenticated.
+      localStorage.removeItem("isAuthenticated");
+      localStorage.removeItem("userData");
+      setIsAuthenticated(false);
     }
   }, []);
 
@@ -94,6 +103,7 @@ function App() {
           <Route path="/products" element={<ProtectedRoute element={ProductsPage} permission="products" isAuthenticated={isAuthenticated} currentUser={currentUser} />} />
           <Route path="/users-admin" element={<ProtectedRoute element={UsersAdminPage} permission="users-admin" isAuthenticated={isAuthenticated} currentUser={currentUser} />} />
           <Route path="/restore" element={<ProtectedRoute element={RestorePage} permission="dashboard" isAuthenticated={isAuthenticated} currentUser={currentUser} />} />
+          <Route path="/ledger" element={<ProtectedRoute element={LedgerPage} permission="ledger" isAuthenticated={isAuthenticated} currentUser={currentUser} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </LayoutWrapper>

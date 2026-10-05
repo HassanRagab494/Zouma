@@ -10,6 +10,7 @@ import {
   FaUserShield,
   FaAddressBook,
   FaCloudDownloadAlt,
+  FaBook,
 } from "react-icons/fa";
 
 function Sidebar({ open, setOpen }) {
@@ -26,6 +27,7 @@ function Sidebar({ open, setOpen }) {
     { to: "/profits", key: "profits", icon: <FaChartLine size={18} />, label: "الأرباح" },
     { to: "/orders", key: "orders", icon: <FaClipboardList size={18} />, label: "الطلبات" },
     { to: "/products", key: "products", icon: <FaBoxOpen size={18} />, label: "المخزون" },
+    { to: "/ledger", key: "ledger", icon: <FaBook size={18} />, label: "الدفتر" },
   ];
 
   const allowedLinks = isAdmin
