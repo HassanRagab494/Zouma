@@ -35,7 +35,8 @@ function UsersAdminPage() {
     { key: "clients", label: "العملاء" },
     { key: "profits", label: "الأرباح" },
     { key: "orders", label: "الطلبات" },
-    { key: "products", label: "المخزون" }
+    { key: "products", label: "المخزون" },
+    { key: "ledger", label: "الدفتر" }
   ];
 
   // =======================
